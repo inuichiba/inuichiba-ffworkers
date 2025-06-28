@@ -1,0 +1,15 @@
+# 改行コードをLFに統一（Git操作時に自動変換）
+* text=auto eol=lf
+
+# スクリプト・設定ファイルはすべてtext扱い
+*.ps1     text
+*.js      text
+*.json    text
+*.md      text
+*.toml    text
+*.sh      text
+*.yml     text
+*.yaml    text
+
+# バイナリ誤認識の予防（必要最低限）
+*.zip     binary

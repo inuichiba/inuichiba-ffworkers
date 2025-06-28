@@ -89,11 +89,13 @@ restless-term-*/
 .vscode-server/
 .vscode-remote/
 
-# ---------------------------------------
-# 🔁 ffscripts（スクリプト側）の特例
-inuichiba-ffscripts/package-lock.json
 
 # ---------------------------------------
-# ❗ 明示的に含める必要がある場合は以下をコメント解除
-# !inuichiba-ffworkers/
-# !inuichiba-ffscripts/
+# 💻 OS依存ファイル
+.DS_Store
+Thumbs.db
+
+# 🗑 エディタが吐く一時ファイル（任意）
+*.bak
+*.tmp
+
