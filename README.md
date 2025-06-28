@@ -6,13 +6,13 @@
 ---
 
 ## 📁 ディレクトリ構成（src/ 以下）
-src/index.js    # Workers のエントリーポイント
- -- handlers/   # 各イベント種別（message, postback など）に応じた処理本体
- -- lib/        # 共通関数（Supabase書き込み、LINE API補助など）
- -- secrets/    # .env.secrets.ff*.txt を配置（Git除外）
- -- richmenu-manager/ # タブ付きリッチメッセージの作成(ローカルで実施)、
-    -- data/    # メニュー画像、メッセージテンプレート
-        -- messages.js # メッセージテンプレート（メッセージ、postback対応付け、絵文字など）
+- src/index.js # Workers のエントリーポイント
+ - handlers/   # 各イベント種別（message, postback など）に応じた処理本体
+ - lib/        # 共通関数（Supabase書き込み、LINE API補助など）
+ - secrets/    # .env.secrets.ff*.txt を配置（Git除外）
+ - richmenu-manager/  # タブ付きリッチメッセージの作成(ローカルで実施)
+    - data/    # メニュー画像、メッセージテンプレート
+        - messages.js # メッセージテンプレート（メッセージ、postback対応付け、絵文字など）
 
 
 ---
