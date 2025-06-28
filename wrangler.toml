@@ -1,0 +1,58 @@
+# 📛 ベース名（この name は fallback 用。各環境で上書きされます）
+name = "inuichiba-ffworkers"
+
+# エントリーポイント
+main = "src/index.js"
+
+# ✅ Cloudflare Workers は .js が ESM（ES Modules）形式なら自動的に module 型を検出
+# type = "module"
+
+# 📅 Wrangler の互換性日付（安定版）
+compatibility_date = "2024-06-01"
+
+# 💳 Cloudflare アカウント
+account_id = "39914da7b7f259b59d901f0b57cc17cc"
+
+# 独自ドメインがないときは true
+workers_dev = true
+
+# 本番環境用KV(Supabase連打スキップ機能)
+[[kv_namespaces]]
+binding = "users_kv"
+id = "9cc8cd1153a34a66a4e1bf313078664c"
+preview_id = "4ebfa42f89f7478888677c5486b6b540"
+
+
+# 🌍 通常は Workers.dev を使用（routes や zones は省略）
+# route = ""
+# zone_id = ""
+
+
+# ==========================
+# ✅ 開発環境 ffdev
+# ==========================
+[env.ffdev]
+# デプロイ時のWorker名
+name = "inuichiba-ffworkers-ffdev"
+
+# envオブジェクトで受け取る変数
+vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
+
+# ⚠️ kv_namespaces は継承されないので明示的に定義する
+[[env.ffdev.kv_namespaces]]
+binding = "users_kv"
+id = "4ebfa42f89f7478888677c5486b6b540"
+
+
+# ==========================
+# ✅ 本番環境 ffprod
+# ==========================
+[env.ffprod]
+name = "inuichiba-ffworkers-ffprod"
+vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffprod" }
+
+[[env.ffprod.kv_namespaces]]
+binding = "users_kv"
+id = "9cc8cd1153a34a66a4e1bf313078664c"
+
+
