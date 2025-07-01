@@ -7,8 +7,8 @@ main = "src/index.js"
 # ✅ Cloudflare Workers は .js が ESM（ES Modules）形式なら自動的に module 型を検出
 # type = "module"
 
-# 📅 Wrangler の互換性日付（安定版）
-compatibility_date = "2024-06-01"
+# 📅 Wrangler の日付
+compatibility_date = "2025-06-24"
 
 # 💳 Cloudflare アカウント
 account_id = "39914da7b7f259b59d901f0b57cc17cc"

@@ -2,28 +2,37 @@
 import { getEnv } from "./lib/env.js";
 import { handleEvent } from "./handlers/events.js"; // ← 🔧 これがCloudflare対応済ならOK
 import { verifySignature } from "./lib/verifySignature.js";
+import { onRequestPost as handleNotify } from './notify.js';
 
 export default {
   async fetch(request, env, ctx) {
 		const { isProd, channelSecret } = getEnv(env);
-		
+		const url = new URL(request.url); 
+
+	  // ✅ /notify エンドポイントの処理（GitHub Actions用）
+    if (request.method === "POST" && url.pathname === "/notify") {
+      return handleNotify({ request, env, ctx });
+    }
+	
+	  // ✅ Webhookの GET ヘルスチェック
     if (request.method === "GET") {
       if (!isProd) console.log("📶 Webhook Healthcheck に応答");
       return new Response("Webhook is alive", { status: 200 });
     }
 
-    if (request.method !== "POST") {
+    // ✅ その他のメソッドは拒否
+	  if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
     // 自作ミドルウェアで署名検証（Cloudflare版は自前実装または簡略化が必要）
-		const { isValid, bodyText } = await verifySignature(request, channelSecret);
-		if (!isValid) {
+	  const { isValid, bodyText } = await verifySignature(request, channelSecret);
+	  if (!isValid) {
 			if (!isProd) console.warn("⚠️ LINE署名検証失敗");
   		return new Response("Unauthorized", { status: 401 });
 		}
 		
-    // イベント解析と処理
+    // イベント解析と処理(JSONパース)
 		let json;
 		try {
   		json = JSON.parse(bodyText);
@@ -36,6 +45,7 @@ export default {
   		return new Response("Invalid event format", { status: 400 });
 		}
 		
+    // ✅ 各イベント処理（失敗しても継続）
 		for (let i = 0; i < json.events.length; i++) {
   		const event = json.events[i];
   		try {
