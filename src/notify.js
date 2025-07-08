@@ -21,9 +21,10 @@
  *   Discord通知 + GitHubメール通知の二重通知体制で運用中です。
  * - Supabaseへのcurlのエラー通知(console.log)を、
  *   課金覚悟で Cloudflare Workers に通知してほしいとき、
- *   "D:\nasubi\inuichiba-ffscripts\.github\workflows\ping-supabase.yml"の
- *   GitHub Secretsに定義した値 DISCORD_WEBHOOK_URL(3か所)を
- *   WORKERS_NOTIFY_URL に書き換えれば使えます。
+ *   ・Windowsの場合 D:\nasubi\inuichiba-ffscripts\.github\workflows\ping-supabase.ymlの
+ *   ・Mac/Unixの場合 /Users/yourname/projectname/inuichiba-ffscripts/.github/workflows/ping-supabase.yml"の
+ *   DISCORD_WEBHOOK_URL (3か所。GitHub Secretsに定義済) を
+ *   WORKERS_NOTIFY_URL (これも定義済) に書き換えれば使えます。
  */
 
 

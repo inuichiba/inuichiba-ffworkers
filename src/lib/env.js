@@ -6,23 +6,30 @@
 // 🔐 機密性の高い値（アクセストークンなど）は、Secretsとして Cloudflare Workers に登録しておき、
 //    ここでは isProd を元に、環境（本番 / 開発）を自動判定して出し分けます。
 // ---------------------------------------
+import os from "os"; // Node.js標準モジュール
+
 export function getEnv(env) {
 
+  // 環境変数をenv.XXXXと読むのは、Wrangler が env を引数として fetch() に渡してくれるため、
+  // その中にある環境変数が唯一の参照方法
 	const projectId = env.GCLOUD_PROJECT || "";
 
 	// ✅ 本番判定（CLIバッチ or 通常）
 	const isProd = (projectId === "inuichiba-ffworkers-ffprod");
 
+  // タブ付きリッチメニュー画面のありかの相対パス
+  const imageDir = path.join(process.cwd(), "src", "richmenu-manager", "data");
+
 	return {
 		isProd,
 		projectId,
+    imageDir,
 		channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
 		channelSecret:      getConfigValue(env, isProd ? "CHANNEL_SECRET_FFPROD" : "CHANNEL_SECRET_FFDEV"),
 		supabaseKey:        getConfigValue(env, isProd ? "SUPABASE_SERVICE_ROLE_KEY_FFPROD" : "SUPABASE_SERVICE_ROLE_KEY_FFDEV"),
 		supabaseUrl:        getConfigValue(env, isProd ? "SUPABASE_URL_FFPROD" : "SUPABASE_URL_FFDEV"),
 		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
 		baseDir:            "https://inuichiba-ffimages.pages.dev/",
-		imageDir: 					"D:/nasubi/inuichiba-ffworkers/src/richmenu-manager/data",
 	};
 
 }		// getEnvの終わり
@@ -30,8 +37,13 @@ export function getEnv(env) {
 
 // 現時点ではタブ付きリッチメニュー用に特化した関数
 export function getEnvInfo(env) {
+
+  // ローカル実行の場合は、OS の「環境変数」にアクセスするため process.env を使う
   const projectId = process.env.GCLOUD_PROJECT || "";
   const isProd = projectId === "inuichiba-ffworkers-ffprod";
+
+  // タブ付きリッチメニュー画面のありかの相対パス
+  const imageDir = path.join(process.cwd(), "src", "richmenu-manager", "data");
 
 /**
 	console.log(`🔎 env keysの先頭10文字: ${Object.keys(env).slice(0, 5)}...}`);
@@ -41,11 +53,11 @@ export function getEnvInfo(env) {
   console.log(`🔐 CHANNEL_ACCESS_TOKEN_FFDEV の先頭5文字: ${env.CHANNEL_ACCESS_TOKEN_FFDEV.slice(0, 5)}...`);
 */
 
-	return {  
+	return {
 		isProd,
-		projectId, 
+		projectId,
+		imageDir,
     channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
-		imageDir: 					"D:/nasubi/inuichiba-ffworkers/src/richmenu-manager/data",
 	};
 }
 
@@ -71,17 +83,17 @@ export function getEnvInfo(env) {
 	export function sanitizeEnvVar(value) {
   	if (typeof value !== "string") return value;
   	let v = value;
-		
+
 		// BOM（Byte Order Mark）を除去
 	  if (v.charAt(0) === "\uFEFF") v = v.slice(1);
 
 		// 制御文字（null, \r, \n, \t など）を削除
   	v = v.replace(/[\u0000-\u001F]/g, "");
-	
+
 		return v.trim();
 	}
-	
-	
+
+
 	// =======================================/
 	// 🔹 デバッグ時専用、安全なログ出力（console.logで機密を出さない工夫）
 	// ---------------------------------------
@@ -108,16 +120,16 @@ export function getEnvInfo(env) {
     	console.error(`❌ ${label} のログ出力に失敗しました`, e);
 		}
   };
-	
-	
+
+
 	// =======================================
 	// 🔹 安全なログ出力を使った機密情報の表示(ffdevのみ)
 	// =======================================
 	// functionと同じ。こうすると実行時に初めて呼ばれる
 	export const seeSecretInfo = (env) => {
-  	const { isProd, projectId, channelSecret, channelAccessToken, 
+  	const { isProd, projectId, channelSecret, channelAccessToken,
 						supabaseKey, supabaseUrl, usersTable } = getEnv(env);
-  	
+
 		console.log("🐾 環境判定された projectId(GCLOUD_PROJECT):", projectId || "(未定義)");
   	console.log("🐾 isProd:", isProd);
 		if (isProd) {

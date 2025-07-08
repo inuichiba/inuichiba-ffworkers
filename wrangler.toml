@@ -35,7 +35,11 @@ preview_id = "4ebfa42f89f7478888677c5486b6b540"
 # デプロイ時のWorker名
 name = "inuichiba-ffworkers-ffdev"
 
-# envオブジェクトで受け取る変数
+# ⚠️ この vars セクションは Cloudflare Pages の "ビルド時" 変数用です
+# Cloudflare Workers の env.GCLOUD_PROJECT には渡されません
+# Workers で使うには Cloudflare ダッシュボードの「Variables(プレーンテキスト)」
+# に登録してください
+# https://dash.cloudflare.com/ → Workers → 環境変数（Variables）
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
 
 # ⚠️ kv_namespaces は継承されないので明示的に定義する
