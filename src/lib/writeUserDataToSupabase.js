@@ -1,5 +1,3 @@
-// lib/writeUserDataToSupabase.js
-
 import { getEnv } from"./env.js";
 import { getFormattedJST } from "./saveUserInfo.js";
 
@@ -31,9 +29,9 @@ export async function writeUserDataToSupabase(userData, env) {
     console.log("📦 Supabase 書き込みデータ:", userData);
     console.log("🔑 KV キー:", kvKey);
   }
-  
+
   try {
-    
+
     // ✅ 1. KVに該当キーが存在するか確認（TTL内の書き込み済みかどうか）
     const existing = await env.users_kv.get(kvKey);
     if (existing) {
@@ -54,7 +52,7 @@ export async function writeUserDataToSupabase(userData, env) {
 
     const body = JSON.stringify(userData);
     const upsertRes = await fetch(postUrl, { method: "POST", headers, body });
-  
+
     // レスポンスの内容をJSONまたはTEXTで取得
     let upsertResult;
     try {
@@ -71,7 +69,7 @@ export async function writeUserDataToSupabase(userData, env) {
         console.warn("⚠️ Supabaseに既存データがあり、KVは消失またはTTL切れでした:", kvKey);
         try {
           // KVに再保存して今後1年間スキップ対象にする
-          await env.users_kv.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 }); 
+          await env.users_kv.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
         } catch (kvErr) {
           console.error("⚠️ KVへの再登録に失敗:",  kvErr);
           // 処理は続ける（止めない）
@@ -100,7 +98,7 @@ export async function writeUserDataToSupabase(userData, env) {
     if (!isProd) {
 	    console.log("🕐 Supabase 書き込み完了タイムスタンプ:", getFormattedJST());
       console.log("✅ Supabase 書き込み成功");
-    } 
+    }
 
     return { success: true }; // ✅ 正常終了
 
@@ -109,6 +107,6 @@ export async function writeUserDataToSupabase(userData, env) {
     console.error("❌ Supabase の書き込み中か KV 処理中に例外が発生しました：", err.stack || err);
     return { error: err };
   }
-	
+
 }
 

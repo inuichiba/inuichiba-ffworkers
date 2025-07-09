@@ -1,15 +1,15 @@
 // functions/richmenu-manager/richMenuHandler.js
 // バッチで有償とは関係ないからコンソールログは出す
 
-import fs from "fs/promises"; // 非同期用 
 import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 
 // //////////////////////////////////////////////////
 // リッチメニューのサイズ
 // 次の条件をクリアすること
 // ・横幅は800px～2500px 縦幅は250px以上
 // ・幅/高さのアスペクト比は1.45以上
-// ・LINE推奨は width: 2500, height: 843 
+// ・LINE推奨は width: 2500, height: 843
 const wAll  = 2000;
 const hAll  = 1200;
 const wItem =  500;
@@ -22,10 +22,10 @@ const hTab  =  200;
 // リッチメニューの開始
 // 新しいリッチメニューを作成する
 // //////////////////////////////////////////////////
-export async function handleRichMenu(isProd, channelAccessToken, imageDir) {
+export async function handleRichMenu(isProd, channelAccessToken) {
 	let bRichMenuId;
-  let imagePathA, imagePathB;
-  
+  let imageBufferA, imageBufferB;
+
 	try {
   	// リッチメニューを作成してリッチメニューIdを紐づける(LINE部品まで呼ぶ)
     const aRichMenuId = await aCreateRichMenu(channelAccessToken);
@@ -33,56 +33,58 @@ export async function handleRichMenu(isProd, channelAccessToken, imageDir) {
 			console.log(`✅ 画面Aの aRichMenuId の作成に成功しました：richMenuId = ${aRichMenuId}`);
 		} else {
 		  console.error("❌ 画面Aの aRichMenuId が作成できませんでした。処理を中止します");
-		  return;	
+		  return;
 	  }
-  	
+
     if(isProd) {
       bRichMenuId = await bCreateRichMenu(channelAccessToken);
     } else {
-      bRichMenuId = await bCreateRichMenuYoichi(channelAccessToken); 
+      bRichMenuId = await bCreateRichMenuYoichi(channelAccessToken);
     }
-	  
+
     if (bRichMenuId) {
 			console.log(`✅ 画面Bの bRichMenuId の作成に成功しました：richMenuId = ${bRichMenuId}`);
 		} else {
 		  console.error("❌ 画面Bの bRichMenuId が作成できませんでした。処理を中止します");
-		  return;	
+		  return;
 	  }
 
-    // リッチメニューに画面を紐づけてアップロードする(JPEGのみ可)
+
+    // リッチメニューに画面を紐づけてアップロードする(Base64)
+    // await import(...) は ES Modules の動的 import と呼ばれる仕組みで、
+    // 「あとから必要なモジュールだけ読み込む」使い方ができる
     if (isProd) {
-	    imagePathA   = path.join(imageDir, "tabA2025autumn.jpg");
-      imagePathB   = path.join(imageDir, "tabB2025autumn.jpg");
+      // 本番用メニュー画面(Base64の.js形式)ファイルを、await import で安定して使えるように
+      // file://～形式に変換する
+      // const { i : a }=obj; とは、const a = obj.i;（i を a にリネーム）の意味
+      const { imageBuffer: a } = await import(getPathToFileURL("tabA2025autumn.js"));
+      const { imageBuffer: b } = await import(getPathToFileURL("tabB2025autumn.js"));
+      imageBufferA = a;
+      imageBufferB = b;
     } else {
-			imagePathA   = path.join(imageDir, "tabA2025spring.jpg");
-			imagePathB   = path.join(imageDir, "tabB2025spring.jpg");
-    }	
-    
-    const imageBufferA = await fs.readFile(imagePathA);
-    const imageBufferB = await fs.readFile(imagePathB);
+      // 開発用画像
+      const { imageBuffer: a } = await import(getPathToFileURL("tabA2025spring.js"));
+      const { imageBuffer: b } = await import(getPathToFileURL("tabB2025spring.js"));
+      imageBufferA = a;
+      imageBufferB = b;
+    }
+
     if (!imageBufferA || !imageBufferB) {
       console.error("❌ 画像読み込みに失敗しました（imageBufferA/B が空）");
       return;
     }
 
     console.log("");
-    await checkJpegMagicNumbers(imagePathA);
-  //  console.log("📄 読み込みパス:", imagePathA);
-  //  console.log("✅ imageBufferA 読み込み成功:", imageBufferA.length, "bytes");
-  //  console.log("🎯 richMenuId:", aRichMenuId);
-  //  console.log("🔑 channelAccessToken:", channelAccessToken.slice(0, 5), "..."); // 最初だけ
-    console.log("");
-
     await new Promise(resolve => setTimeout(resolve, 1000));  // 1秒待つ(即時にrichMenuIdを使わない)
 
-    
+
     const uploadFlgA = await lineUploadRichMenuImage(channelAccessToken, aRichMenuId, imageBufferA);
     if (!uploadFlgA) {
       console.error("❌ 画面A のアップロードができませんでした。処理を中止します");
       return;
     }
     console.log("✅ 画面A のアップロードに成功しました");
-		
+
     const uploadFlgB = await lineUploadRichMenuImage(channelAccessToken, bRichMenuId, imageBufferB);
 		if (!uploadFlgB) {
       console.error("❌ 画面B のアップロードができませんでした。処理を中止します");
@@ -98,7 +100,7 @@ export async function handleRichMenu(isProd, channelAccessToken, imageDir) {
 			console.log("✅ 画面A を既定値に設定しました");
 		} else {
 		  console.error("❌ 画面A を規定値に設定できませんでした。処理を中止します");
-		  return;	
+		  return;
 	  }
 
 
@@ -108,7 +110,7 @@ export async function handleRichMenu(isProd, channelAccessToken, imageDir) {
 			console.log("✅ 画面A のエイリアス switch-to-a の登録に成功しました");
 		} else {
 		  console.error("❌ 画面A のエイリアス switch-to-a の登録ができませんでした。処理を中止します");
-		  return;	
+		  return;
 	  }
 
 		const aliasFlgB = await lineRegisterRichMenuAlias(channelAccessToken, bRichMenuId, "switch-to-b");
@@ -116,13 +118,13 @@ export async function handleRichMenu(isProd, channelAccessToken, imageDir) {
 			console.log("✅ 画面B のエイリアス switch-to-b の登録に成功しました");
 		} else {
 		  console.error("❌ 画面B のエイリアス switch-to-b の登録ができませんでした。処理を中止します");
-		  return;	
+		  return;
 	  }
-  	
+
 	} catch (error) {
     console.error('リッチメニューメインエラー:', error);
-  }  
-  	
+  }
+
 }
 
 
@@ -167,7 +169,7 @@ async function aCreateRichMenu(channelAccessToken) {
           bounds: { x: wItem*3, y: hTab, width: wItem, height: hItem },
           action: { type: "uri", uri: "https://inuichiba.com/index.html" }
         },
-	      
+
   	  // A4
         {
           bounds: { x: 0, y: (hTab+hItem), width: wItem, height: hItem },
@@ -188,18 +190,18 @@ async function aCreateRichMenu(channelAccessToken) {
           bounds: { x:wItem*3, y: (hTab+hItem), width: wItem, height: hItem },
           action: { type: "postback", data: "tap_richMenuA7", "displayText": "駐車場及びアクセス方法", "label": "　" }
         }
-      ] 
+      ]
 	  };
-  	
+
   	// リッチメニューを作りIdをもらう
   	const aRichMenuId = await lineCreateRichMenu(channelAccessToken, menuConfig);
   	return aRichMenuId;
-  	
+
 	} catch (error) {
     console.error('aRichMenuId 作成エラー:', error);
 		return null;
-  }  
-  
+  }
+
 }
 
 
@@ -239,7 +241,7 @@ async function bCreateRichMenu(channelAccessToken) {
           bounds: { x: wItem*2, y: hTab, width: wItem*2, height: hItem },
           action: { type: "uri", uri: "https://inuichiba.com/index.html" }
         },
-	      
+
   	    // B4
         {
           bounds: { x: 0, y: (hTab+hItem), width: wItem, height: hItem },
@@ -262,15 +264,15 @@ async function bCreateRichMenu(channelAccessToken) {
         }
     	]
 		};
-		
+
   	// リッチメニューを作りIdをもらう
   	const bRichMenuId = await lineCreateRichMenu(channelAccessToken, menuConfig);
   	return bRichMenuId;
-  	
+
 	} catch (error) {
     	console.error('bRichMenuId 作成エラー:', error);
-  }  
-  
+  }
+
 }
 
 
@@ -337,34 +339,35 @@ async function bCreateRichMenuYoichi(channelAccessToken) {
         }
     	]
 		};
-		
+
   	// リッチメニューを作りIdをもらう
   	const bRichMenuId = await lineCreateRichMenu(channelAccessToken, menuConfig);
   	return bRichMenuId;
-  	
+
 	} catch (error) {
     console.error('bRichMenuId(Yoichi) 作成エラー:', error);
 		return null;
-  }  
-  
+  }
+
 }
 
 
-// //////////////////////////////////////////////////
-// バイナリファイル(jpg)が正しいかチェック
-// //////////////////////////////////////////////////
-async function checkJpegMagicNumbers(filePath) {
-  const buffer = await fs.readFile(filePath); // 非同期読み込み
 
-  const start = buffer.slice(0, 2).toString("hex").toUpperCase();
-  const end = buffer.slice(-2).toString("hex").toUpperCase();
 
-  console.log(`🔍 先頭: ${start}, 末尾: ${end}`);
-  if (start === "FFD8" && end === "FFD9") {
-    console.log("✅ JPEG形式のバイナリとして正しいです。");
-  } else {
-    console.error("❌ JPEG形式として不正です。画像破損または形式ミスマッチの可能性があります。");
-  }
+/** **************************************************************************
+ * 指定したJSファイル名から file:// 形式のURLを返す（await importに使える）
+ * @param {string} filename - 例: "tabA2025autumn.js"
+ * @returns {string} URL文字列（file://...）
+ */
+function getPathToFileURL(filename) {
+  const __filename = fileURLToPath(import.meta.url); // このファイル自身の絶対パス
+  const __dirname = path.dirname(__filename);        // このファイルのあるディレクトリ(絶対パス)
+
+  // 自分から見てメニュー画像ファイルがどこにあるかの絶対パス
+  const imageDir = path.join(__dirname, "data");
+  const fullPath = path.join(imageDir, filename);    // 絶対パスへ変換
+  // file://～形式に変換してリターン
+  return pathToFileURL(fullPath).href;
 }
 
 

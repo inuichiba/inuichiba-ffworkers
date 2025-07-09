@@ -52,7 +52,7 @@ export async function handleEvent(event, env) {
       return new Response("❓ 未対応のイベント", { status: 400 });
   }
 
-  return new Response("Done", { status: 200 });  
+  return new Response("Done", { status: 200 });
 
 }
 
@@ -70,19 +70,19 @@ async function handleFollowEvent(event, env) {
   const eventType = "follow";
   let p3;
   const { isProd } = getEnv(env);
-  
+
   // --- メッセージ生成＆返信
   // ユーザープロフィールを取得
   const p1 = getUserProfile(userId, env);
   const profile = p1;
   const displayName = profile?.displayName || null;
   const followText = textTemplates["msgFollow"];
-  
+
   let mBody = (displayName == null || displayName.includes("$"))
     ? followText
     : `${displayName}さん、${followText}`;
 
-  
+
   // ウェルカムメッセージを作って送る
   let message;
   try {
@@ -95,7 +95,7 @@ async function handleFollowEvent(event, env) {
 
   const p2 = sendReplyMessage(event.replyToken, [message], env);
 
-  
+
   // --- 書き込みはあとで非同期に（UI優先！）
   // 有償を避けるため follow eventしか書き込まない
   if (userId) {
@@ -106,7 +106,7 @@ async function handleFollowEvent(event, env) {
     }
   }
 
-  
+
   // すべての非同期処理が終わるのを待つ
   const promises = [];
 
@@ -115,12 +115,15 @@ async function handleFollowEvent(event, env) {
   if (typeof p3 !== "undefined") promises.push(p3);
 
   try {
-    const results = await Promise.all(promises);
+    // 📌 現在は Promise の戻り値（results）は使用していないが、
+    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
+    //    必要になったら const results = await Promise.all(promises); に戻すこと。
+    await Promise.all(promises);
   } catch (err) {
     if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
     return new Response(`${eventType} NG`, { status: 400 });
   }
-  
+
   return new Response(`${eventType} OK`, { status: 200 });
 
 }
@@ -141,12 +144,12 @@ async function handleMessageEvent(event, env) {
 	let message = [];
   let p1, p2;
 
- 
+
 	// LINE公式アカウントの「自動応答対象ワード」はBotが代わりに返信
 	if (data === "QRコード" || data === "友だち追加") {
     message = lineQRMessages;
     p1 = sendReplyMessage(event.replyToken, message, env);
-  } 
+  }
 	// グループ or ルームからのメッセージは、LINE自動応答メッセージのみBotの代わりに返信
 	// 他は完全に無視
 	else if (sourceType === "group" || sourceType === "room") {
@@ -162,7 +165,7 @@ async function handleMessageEvent(event, env) {
     message = [{ type: "text", text: msgPostpone }];
     p1 = sendReplyMessage(event.replyToken, message, env);
   }
-	
+
   // --- Supabase書き込みはメッセージ送信後、後回しに実行（非同期）
   const { isProd } = getEnv(env);
 
@@ -182,14 +185,17 @@ async function handleMessageEvent(event, env) {
   if (typeof p2 !== "undefined") promises.push(p2);
 
   try {
-    const results = await Promise.all(promises);
+    // 📌 現在は Promise の戻り値（results）は使用していないが、
+    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
+    //    必要になったら const results = await Promise.all(promises); に戻すこと。
+    await Promise.all(promises);
   } catch (err) {
     if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
     return new Response(`${eventType} NG`, { status: 400 });
   }
-  
+
   return new Response(`${eventType} OK`, { status: 200 });
-	
+
 }
 
 
@@ -211,7 +217,7 @@ async function handlePostbackEvent(event, env) {
     p1 = await handleRichMenuTap(data, event.replyToken, env);
   }
 
-  // --- B. タブ切り替えなど、今は何もしないケース    
+  // --- B. タブ切り替えなど、今は何もしないケース
   // タブ切り替え。安定したのでログ不要
   if (data === "change to A" || data === "change to B") {
     // if (!isProd) console.log("🔁 タブ切り替え postback 受信（許可）:", data);
@@ -238,14 +244,17 @@ async function handlePostbackEvent(event, env) {
   if (typeof p2 !== "undefined") promises.push(p2);
 
   try {
-    const results = await Promise.all(promises);
+    // 📌 現在は Promise の戻り値（results）は使用していないが、
+    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
+    //    必要になったら const results = await Promise.all(promises); に戻すこと。
+    await Promise.all(promises);
   } catch (err) {
     if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
     return new Response(`${eventType} NG`, { status: 400 });
   }
-  
+
   return new Response(`${eventType} OK`, { status: 200 });
-	
+
 }
 
 
@@ -266,25 +275,25 @@ async function handleRichMenuTap(data, replyToken, env) {
   else if (data == "tap_richMenuA2" || data == "tap_richMenuB2") {
     carouselFlg = true;
     messages = setMannerCarouselMessage(env);
-  } 
+  }
   else if (data == "tap_richMenuA3" || data == "tap_richMenuB3") {
     carouselFlg = true;
     messages = setPandRCarouselMessage(env);
-  } 
+  }
   else if (data == "tap_richMenuA5") {
     carouselFlg = true;
     messages = setDogRunCarouselMessage(env);
-  } 
+  }
   else if (data == "tap_richMenuA6" || data == "tap_richMenuB6") {
     carouselFlg = true;
     messages = setMapCarouselMessage(env);
-  } 
+  }
   else if (data == "tap_richMenuA7" || data == "tap_richMenuB7") {
     carouselFlg = true;
     messages = setParkingCarouselMessage(env);
   }
 
-  
+
   const { isProd } = getEnv(env);
 
   try {
@@ -296,7 +305,7 @@ async function handleRichMenuTap(data, replyToken, env) {
     if (!isProd) console.warn(`⚠️ message 絵文字メッセージの構築失敗: ${error.message}`);
   }
 
-  
+
   // カルーセルメッセージか？
   if (carouselFlg) {
     // フレックスメッセージ部分だけを入れる
@@ -335,9 +344,9 @@ async function handleJoinEvent(event, env) {
   const sourceType = event.source?.type ?? null;  // 'user' | 'group' | 'room'
   const eventType = "join";
   let p2;
-  
+
   const { isProd } = getEnv(env);
-    
+
   const welcomeMessage = { type: "text", text: msgJoin };
   const p1 = sendReplyMessage(event.replyToken, [welcomeMessage], env);
 
@@ -349,7 +358,7 @@ async function handleJoinEvent(event, env) {
       return new Response(`${eventType} NG`, { status: 400 });
     }
   }
-  
+
   // すべての非同期処理が終わるのを待つ
   const promises = [];
 
@@ -357,12 +366,15 @@ async function handleJoinEvent(event, env) {
   if (typeof p2 !== "undefined") promises.push(p2);
 
   try {
-    const results = await Promise.all(promises);
+    // 📌 現在は Promise の戻り値（results）は使用していないが、
+    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
+    //    必要になったら const results = await Promise.all(promises); に戻すこと。
+    await Promise.all(promises);
   } catch (err) {
     if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
     return new Response(`${eventType} NG`, { status: 400 });
   }
-  
+
   return new Response(`${eventType} OK`, { status: 200 });
 
 }
@@ -385,7 +397,7 @@ function buildEmojiMessage(templateKey, env, mBody) {
 
   const placeholderCount = (rawText.match(/\$/g) || []).length;
   const { isProd } = getEnv(env);
-    
+
   if (!isProd) {
     console.log("💡 placeholderCount ($の数):", placeholderCount);
     console.log("🔢 emojiList.length:", emojiList ? emojiList.length : 0);
@@ -397,7 +409,7 @@ function buildEmojiMessage(templateKey, env, mBody) {
 
   const emojis = [];
   let i = 0;
-  let placeholderIndex = rawText.indexOf('$');  
+  let placeholderIndex = rawText.indexOf('$');
 
   while (placeholderIndex !== -1) {
     emojis.push({
@@ -428,7 +440,7 @@ function buildEmojiMessage(templateKey, env, mBody) {
 
 
 // ----------- ↓ ここからカルーセルメッセージたち ↓ -----------
-// ///////////////////////////////////////////// 
+// /////////////////////////////////////////////
 // GOOD MANNERSをカルーセルメッセージにする
 function setMannerCarouselMessage(env) {
   const { msgA20, msgA21, msgA22, msgA23 } = createMessages(env);
@@ -436,10 +448,10 @@ function setMannerCarouselMessage(env) {
   const textMessageA2 = [
     { type: "text", text: msgA20 }
   ];
-  
+
   const { baseDir } = getEnv(env);
 
-  const flex_message1 = { 
+  const flex_message1 = {
     type: "bubble",
     body: {
       type: "box",
@@ -478,8 +490,8 @@ function setMannerCarouselMessage(env) {
       }
     }
   };
-  
-  const flex_message2 = { 
+
+  const flex_message2 = {
     type: "bubble",
     body: {
       type: "box",
@@ -518,8 +530,8 @@ function setMannerCarouselMessage(env) {
       }
     }
   };
-    
-  const flex_message3 = { 
+
+  const flex_message3 = {
     type: "bubble",
     body: {
       type: "box",
@@ -558,7 +570,7 @@ function setMannerCarouselMessage(env) {
       }
     }
   };
-    
+
   const flexMessage = {
     type: "flex",
     altText: "グッドマナー",
@@ -568,10 +580,10 @@ function setMannerCarouselMessage(env) {
     }
   };
 
-  
-  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)  
+
+  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)
   // const textMessagesArray = Array.isArray(textMessage) ? textMessage : [textMessage];
-  
+
   // ✅ テキストの配列を展開して、
   // 最終的に [ text, text, ～, flex ] (全体を配列にする)形式にまとめて返す
   return [...textMessageA2, flexMessage];
@@ -579,11 +591,11 @@ function setMannerCarouselMessage(env) {
 }
 
 
-// ///////////////////////////////////////////// 
+// /////////////////////////////////////////////
 // ドッグランの留意事項をカルーセルメッセージにする(テキスト版)
 function setDogRunCarouselMessage(env) {
   const { msgA50, msgA51, msgA52, msgA53, msgA54, msgA55, msgA56, msgA57, msgA58, msgA59 } = createMessages(env);
- 
+
   const textMessageA5 = [
     { type: "text", text: msgA50 }
   ];
@@ -644,7 +656,7 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
-  
+
   const flex_message2 = {
     type: "bubble",
     body: {
@@ -727,7 +739,7 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
-  
+
   const flex_message4 = {
     type: "bubble",
     body: {
@@ -810,7 +822,7 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
-  
+
   const flex_message6 = {
     type: "bubble",
     body: {
@@ -899,7 +911,7 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
-  
+
   const flex_message8 = {
     type: "bubble",
     body: {
@@ -941,7 +953,7 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
-  
+
   const flex_message9 = {
     type: "bubble",
     body: {
@@ -982,7 +994,7 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
-  
+
   const flex_message10 = {
     type: "bubble",
     body: {
@@ -1023,32 +1035,32 @@ function setDogRunCarouselMessage(env) {
       }
     }
   };
- 
-  
-  const carouselContents = [flex_message1, flex_message2, flex_message3, flex_message4, flex_message5, 
+
+
+  const carouselContents = [flex_message1, flex_message2, flex_message3, flex_message4, flex_message5,
                             flex_message6, flex_message7, flex_message8, flex_message9, flex_message10];
 
   const flexMessage = {
     type: "flex",
-    altText: "ドッグラン", 
+    altText: "ドッグラン",
     contents: {
       type: "carousel",
       contents: carouselContents
     }
   };
-	
-  
-  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)  
+
+
+  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)
   // const textMessagesArray = Array.isArray(textMessage) ? textMessage : [textMessage];
-  
+
   // ✅ テキストの配列を展開して、
   // 最終的に [ text, text, ～, flex ] (全体を配列にする)形式にまとめて返す
   return [...textMessageA5, flexMessage];
 
 }
-  
 
-// ///////////////////////////////////////////// 
+
+// /////////////////////////////////////////////
 // PARKING(駐車場及びアクセス方法)をカルーセルメッセージにする
 function setParkingCarouselMessage(env) {
   const { msgA70, msgA71, msgA72 } = createMessages(env);
@@ -1058,7 +1070,7 @@ function setParkingCarouselMessage(env) {
     { type: "text", text: msgA71 },
     { type: "text", text: msgA72 }
   ];
-  
+
   const { baseDir } = getEnv(env);
 
   const flex_message1 = {
@@ -1072,7 +1084,7 @@ function setParkingCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/parking1.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1092,7 +1104,7 @@ function setParkingCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/parking2.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1106,24 +1118,24 @@ function setParkingCarouselMessage(env) {
 
   const flexMessage = {
     type: "flex",
-    altText: "Parking", 
+    altText: "Parking",
     contents: {
       type: "carousel",
       contents: carouselContents
     }
   };
-	
-  
+
+
   // textMessage は常に [ {type: text, ～}, {type: text, ～} ] (配列)形式で送ってくる
   // ひとつのメッセージでもいったん配列形式にする
   // そして...(スプレッド構文)をつけることで、textMessage(配列)の内容を展開する
-  // 例えばmsga61, msga62, msga63, flexMessage 
-  // のように展開して順番で受け手側に渡すことができる 
+  // 例えばmsga61, msga62, msga63, flexMessage
+  // のように展開して順番で受け手側に渡すことができる
   // 後はLINEがテキストならテキスト処理、カルーセルならカルーセル処理を行うだけ
 
   // textMessage が配列ならそのまま使う、単体なら配列に包む
   // const textMessagesArray = Array.isArray(textMessage) ? textMessage : [textMessage];
-  
+
   // ✅ テキストの配列を展開して、
   // 最終的に [ text, text, ～, flex ] (全体を配列にする)形式にまとめて返す
   return [...textMessageA7, flexMessage];
@@ -1131,7 +1143,7 @@ function setParkingCarouselMessage(env) {
 }
 
 
-// ///////////////////////////////////////////// 
+// /////////////////////////////////////////////
 // P&R(パークアンドライド)をカルーセルメッセージにする
 function setPandRCarouselMessage(env) {
   const { msgA3 } = createMessages(env);
@@ -1153,7 +1165,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr1.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1173,7 +1185,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr2.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1193,7 +1205,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr3.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1213,7 +1225,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr4.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1233,7 +1245,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr5.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1253,7 +1265,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr6.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1273,7 +1285,7 @@ function setPandRCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/pandr7.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1287,17 +1299,17 @@ function setPandRCarouselMessage(env) {
 
   const flexMessage = {
     type: "flex",
-    altText: "Parking", 
+    altText: "Parking",
     contents: {
       type: "carousel",
       contents: carouselContents
     }
   };
-	
-  
-  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)  
+
+
+  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)
   // const textMessagesArray = Array.isArray(textMessage) ? textMessage : [textMessage];
-  
+
   // ✅ テキストの配列を展開して、
   // 最終的に [ text, text, ～, flex ] (全体を配列にする)形式にまとめて返す
   return [...textMessageA3, flexMessage];
@@ -1305,11 +1317,11 @@ function setPandRCarouselMessage(env) {
 }
 
 
-// ///////////////////////////////////////////// 
+// /////////////////////////////////////////////
 // MAP(会場マップ/ショップリスト)をカルーセルメッセージにする
 function setMapCarouselMessage(env) {
   const { msgA6 } = createMessages(env);
-  
+
   const textMessageA6 = [
     { type: "text", text: msgA6 }
   ];
@@ -1327,7 +1339,7 @@ function setMapCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/mapAll.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1347,7 +1359,7 @@ function setMapCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/map1.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1367,7 +1379,7 @@ function setMapCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/map2.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1387,7 +1399,7 @@ function setMapCarouselMessage(env) {
       action: {
         type: "uri",
         uri: `${baseDir}carousel/map3.jpg`
-      }   
+      }
     },
     styles: {
       body: {
@@ -1401,17 +1413,17 @@ function setMapCarouselMessage(env) {
 
   const flexMessage = {
     type: "flex",
-    altText: "MAP", 
+    altText: "MAP",
     contents: {
       type: "carousel",
       contents: carouselContents
     }
   };
-	
-  
-  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)  
+
+
+  // textMessage が配列ならそのまま使う、単体なら配列に包む(今は全部配列なので不要)
   // const textMessagesArray = Array.isArray(textMessage) ? textMessage : [textMessage];
-  
+
   // ✅ テキストの配列を展開して、
   // 最終的に [ text, text, ～, flex ] (全体を配列にする)形式にまとめて返す
   return [...textMessageA6, flexMessage];

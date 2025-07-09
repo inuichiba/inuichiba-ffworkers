@@ -1,5 +1,13 @@
 {
 	"files.associations": {
 		"wrangler.json": "jsonc"
-	}
+	},
+  "search.useIgnoreFiles": true,
+  "search.followSymlinks": false,
+  "search.useGlobalIgnoreFiles": true,
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.git": true
+  }
 }

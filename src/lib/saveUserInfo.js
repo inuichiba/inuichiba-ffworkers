@@ -35,7 +35,7 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
 		if (!isProd) console.warn("⚠️ ユーザープロフィール情報の取得に失敗（null）:", { userId, groupId });
 		return { error: "user Profile 取得に失敗" };
 	}
-		
+
   const displayName   = profile?.displayName   || null;
   const pictureUrl    = profile?.pictureUrl    || null;
   const statusMessage = profile?.statusMessage || null;
@@ -43,7 +43,7 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
   groupId = groupId ?? "default";
   const shopName  = null;  // inputData とともに将来機能のため現在は null を送信
   const inputData = null;
-  
+
   try {
     const result = await writeUserDataToSupabase({
       timestamp,
@@ -57,8 +57,8 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
     }, env);
 
    // await delAndPutKV("all", "U4f4509e648b3cb14cfe8c9a14a4eade9", null, "60", env);
-  
-   // コンソールログは writeUserDataToSupabase() が出してるので出さない 
+
+   // コンソールログは writeUserDataToSupabase() が出してるので出さない
     if (result?.skipped) {
       // if (!isProd) console.log("⚠️ KVによりSupabase書き込みスキップ");
       // return new Response("SKIPPED", { status: 200 });
@@ -76,7 +76,7 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
     // if (!isProd) console.log("✅ Supabase書き込み成功");
     // return new Response("OK", { status: 200 });
     return { success: true };
-  
+
   } catch (err) {
     console.error("💥 Supabase KV または書き込み処理中に例外:", err);
     // return new Response("ERROR", { status: 500 });
@@ -96,7 +96,7 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
 async function delAndPutKV(KVKind, userId, groupId, ttl, env) {
   const users_kv = env.users_kv;
   groupId = groupId ?? "default";
-  
+
   if (!userId) {
     console.warn("⚠️ userId が未定義です");
     return { error: "userId is not defined" };
@@ -109,14 +109,14 @@ async function delAndPutKV(KVKind, userId, groupId, ttl, env) {
       const existing = await env.users_kv.get(kvKey);
       if (!existing) {
         console.log("🟡 KVキーは既に存在しません:", kvKey);
-      } else {         
+      } else {
         await users_kv.delete(kvKey);
         console.log("🗑️ KVキーを削除しました:", kvKey);
       }
     } catch (err) {
       console.error("❌ KV削除失敗:", err);
     }
-  } 
+  }
 
   if (KVKind == "put" || KVKind == "all") {
     const timestamp = getFormattedJST();
@@ -131,3 +131,6 @@ async function delAndPutKV(KVKind, userId, groupId, ttl, env) {
   }
 
 }
+
+
+

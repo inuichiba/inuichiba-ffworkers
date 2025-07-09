@@ -6,7 +6,8 @@
 // 🔐 機密性の高い値（アクセストークンなど）は、Secretsとして Cloudflare Workers に登録しておき、
 //    ここでは isProd を元に、環境（本番 / 開発）を自動判定して出し分けます。
 // ---------------------------------------
-import os from "os"; // Node.js標準モジュール
+// import os from "os"; // Node.js標準モジュール
+// const platform = os.platform();
 
 export function getEnv(env) {
 
@@ -17,13 +18,9 @@ export function getEnv(env) {
 	// ✅ 本番判定（CLIバッチ or 通常）
 	const isProd = (projectId === "inuichiba-ffworkers-ffprod");
 
-  // タブ付きリッチメニュー画面のありかの相対パス
-  const imageDir = path.join(process.cwd(), "src", "richmenu-manager", "data");
-
 	return {
 		isProd,
 		projectId,
-    imageDir,
 		channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
 		channelSecret:      getConfigValue(env, isProd ? "CHANNEL_SECRET_FFPROD" : "CHANNEL_SECRET_FFDEV"),
 		supabaseKey:        getConfigValue(env, isProd ? "SUPABASE_SERVICE_ROLE_KEY_FFPROD" : "SUPABASE_SERVICE_ROLE_KEY_FFDEV"),
@@ -34,16 +31,19 @@ export function getEnv(env) {
 
 }		// getEnvの終わり
 
-
+// =======================================
 // 現時点ではタブ付きリッチメニュー用に特化した関数
+// (ディレクトリを確保する関数は別にあるので注意)
+// =======================================
 export function getEnvInfo(env) {
 
   // ローカル実行の場合は、OS の「環境変数」にアクセスするため process.env を使う
   const projectId = process.env.GCLOUD_PROJECT || "";
   const isProd = projectId === "inuichiba-ffworkers-ffprod";
 
-  // タブ付きリッチメニュー画面のありかの相対パス
-  const imageDir = path.join(process.cwd(), "src", "richmenu-manager", "data");
+  // タブ付きリッチメニュー画面のありかが相対パスからURLに変わったので
+  // リッチメニュー関数内でディレクトリを扱うことになったことに注意
+  // const imageDir = path.join(process.cwd(), "src", "richmenu-manager", "data");
 
 /**
 	console.log(`🔎 env keysの先頭10文字: ${Object.keys(env).slice(0, 5)}...}`);
@@ -56,7 +56,6 @@ export function getEnvInfo(env) {
 	return {
 		isProd,
 		projectId,
-		imageDir,
     channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
 	};
 }
@@ -94,7 +93,7 @@ export function getEnvInfo(env) {
 	}
 
 
-	// =======================================/
+  // =======================================/
 	// 🔹 デバッグ時専用、安全なログ出力（console.logで機密を出さない工夫）
 	// ---------------------------------------
 	// Secretsの値は出力しないよう、「長さ」「先頭文字列」などに制限して確認します

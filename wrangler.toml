@@ -16,12 +16,15 @@ account_id = "39914da7b7f259b59d901f0b57cc17cc"
 # 独自ドメインがないときは true
 workers_dev = true
 
+# Wrangler 4.20以降では、Node.js 標準モジュール（たとえば os）を
+# 使う場合は明示的に互換設定が必要
+compatibility_flags = ["nodejs_compat"]
+
 # 本番環境用KV(Supabase連打スキップ機能)
 [[kv_namespaces]]
 binding = "users_kv"
 id = "9cc8cd1153a34a66a4e1bf313078664c"
 preview_id = "4ebfa42f89f7478888677c5486b6b540"
-
 
 # 🌍 通常は Workers.dev を使用（routes や zones は省略）
 # route = ""
@@ -40,6 +43,10 @@ name = "inuichiba-ffworkers-ffdev"
 # Workers で使うには Cloudflare ダッシュボードの「Variables(プレーンテキスト)」
 # に登録してください
 # https://dash.cloudflare.com/ → Workers → 環境変数（Variables）
+
+# ALLOW_SUPABASE_WRITEは、Supabaseに無料で書き込める範囲かどうかを示すフラグです
+# 危なくなってきたらDiscord通知やyamlログなどを参照の上falseにしてください
+# 今は本番環境でしか使っていません
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
 
 # ⚠️ kv_namespaces は継承されないので明示的に定義する
