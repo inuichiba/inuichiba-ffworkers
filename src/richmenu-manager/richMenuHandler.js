@@ -245,7 +245,7 @@ async function bCreateRichMenu(channelAccessToken) {
   	    // B4
         {
           bounds: { x: 0, y: (hTab+hItem), width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB4",  "displayText": "アクティビティに関するご案内", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB3",  "displayText": "アクティビティに関するご案内", "label": "　" }
         },
 	      // B4
         {
@@ -297,35 +297,35 @@ async function bCreateRichMenuYoichi(channelAccessToken) {
           action: { type: "richmenuswitch", richMenuAliasId: "switch-to-b", data: "change to B" }
         },
 
-        // B10
+        // B1y
         {
           bounds: { x: 0, y: hTab, width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB10", "displayText": "画像ファイル表示速度", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB1y", "displayText": "開催情報", "label": "　" }
         },
-        // B11
+        // B2y
         {
           bounds: { x: wItem, y: hTab, width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB11", "displayText": "絵文字の表示", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB2y", "displayText": "絵文字の表示", "label": "　" }
         },
-	      // B3
+	      // B3y
         {
           bounds: { x: wItem*2, y: hTab, width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB3", "displayText": "パークアンドライド(P&R)", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB3y", "displayText": "パークアンドライド(P&R)", "label": "　" }
         },
       	// 指定されたurlを開く
         {
           bounds: { x: wItem*3, y: hTab, width: wItem, height: hItem },
           action: { type: "uri", uri: "https://inuichiba.com/yoichi/yoichi.html" }
         },
-	      // B4
+	      // B4y
         {
           bounds: { x: wItem, y: (hTab+hItem), width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB4", "displayText": "アクティビティに関するご案内", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB4y", "displayText": "アクティビティに関するご案内", "label": "　" }
         },
-  	    // B4
+  	    // B4y
         {
           bounds: { x: 0, y: (hTab+hItem), width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB4", "displayText": "アクティビティに関するご案内", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB4y", "displayText": "アクティビティに関するご案内", "label": "　" }
         },
 	      // B6
         {

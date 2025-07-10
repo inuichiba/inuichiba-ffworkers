@@ -60,7 +60,6 @@ export function getEnvInfo(env) {
 	};
 }
 
-
 	// =======================================
 	// 🔹 secrets の安全取得ユーティリティ
 	// =======================================
@@ -68,6 +67,7 @@ export function getEnvInfo(env) {
     const value = env?.[key];
     return typeof value === "string" ? sanitizeEnvVar(value) : fallback;
   }
+
 
 
 	// =======================================

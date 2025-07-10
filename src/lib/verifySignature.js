@@ -7,16 +7,14 @@
  * @returns {Promise<{ isValid: boolean, bodyText: string }>}
  */
 export async function verifySignature(request, channelSecret) {
-  // リクエストヘッダーから署名を取得
   const signature = request.headers.get("x-line-signature");
   if (!signature) return { isValid: false, bodyText: "" };
 
-  // ボディの生データを取得（Bufferとして）
-  const bodyBuffer = await request.arrayBuffer();
-  const bodyText = new TextDecoder().decode(bodyBuffer);
-
-  // HMAC-SHA256で署名を計算
+  // 🔧 生のボディを「同時に」テキストとUint8Arrayで使えるようにする
+  const bodyText = await request.text();
   const encoder = new TextEncoder();
+  const bodyUint8Array = encoder.encode(bodyText); // ← textをHMAC対象に
+
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(channelSecret),
@@ -25,11 +23,26 @@ export async function verifySignature(request, channelSecret) {
     ["sign"]
   );
 
-  const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(bodyText));
-  const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+  const signatureBuffer = await crypto.subtle.sign("HMAC", key, bodyUint8Array);
+  const computedSignature = toBase64(signatureBuffer);
 
-  // LINEの署名と比較（タイミング攻撃対策として定数時間比較が理想だが、Cloudflareは難しい）
   const isValid = signature === computedSignature;
 
+  // 比較ログ 終了時削除！！
+/**
+  console.warn("📛 比較ログ");
+  console.warn("📬 LINE署名     :", signature);
+  console.warn("🔑 生成署名     :", computedSignature);
+*/
+
   return { isValid, bodyText };
+}
+
+function toBase64(buffer) {
+  const uint8Array = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < uint8Array.byteLength; i++) {
+    binary += String.fromCharCode(uint8Array[i]);
+  }
+  return btoa(binary);
 }

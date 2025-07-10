@@ -1,7 +1,7 @@
 # inuichiba-ffworkers
 
 このリポジトリは、`Cloudflare Workers` を使って LINE BOT などの Webhook 応答を行うためのソースコードをまとめたものです。  
-`inuichiba-ffscripts` 配下にあるPowerShellスクリプトなどからこのリポジトリに対して git push し、手動でデプロイする運用を前提としています。
+`inuichiba-ffscripts` 配下にある PowerShell/sh スクリプトからこのリポジトリに対して git push し、手動でデプロイする運用を前提としています。
 
 - `inuichiba-ffworkers` … `Cloudflare Workers` 用ソースコード
 - `inuichiba-ffimages`  … `cloudflare Pages` 用画像ファイル
@@ -36,26 +36,25 @@
 ## 📝 メモ
 
 - 本リポジトリは `main` ブランチのみを使って運用します。
-- 実行環境ごとに `-env ffdev` や `-env ffprod` を引数で指定できるようになっています。
-
----
-
-## 🔧 初期設定
-```bash
-brew install git
-brew install node
-npm install -g wrangler
-
-git clone https://github.com/inuichiba/inuichiba-ffworkers.git
-cd inuichiba-ffworkers
-wrangler login
-```
+- 実行環境ごとに `-env ffdev` （開発環境）- や `-env ffprod` （本番環境）を引数で指定できるようになっています。
+- 1行変更するような軽微な修正でも、必ず ffdev で確かめてから ffprod のデプロイを行うよう徹底してください。突然仕様変更されて動かなくなる場合があります。
 
 ---
 
 ## 🔁 デプロイ
+
 ```bash
-npx wrangler deploy
+npx wrangler deploy --env ffdev
+npx wrangler deploy --env ffprod
+```
+
+---
+
+## LINE Bot の Webhook URL に指定する URL
+
+```sh
+ffdev  ： https://inuichiba-ffworkers-ffdev.maltese-melody0655.workers.dev
+ffprod ： https://inuichiba-ffworkers-ffprod.maltese-melody0655.workers.dev
 ```
 
 ---
@@ -74,8 +73,8 @@ src/lib/env.js                          # 主に参照。isProd(ffdev/ffprodの�
 
 - リッチメニュー作成はローカルで `inuichiba-ffscripts/ffworkers-run-richmenu.ps1` / `inuichiba-ffscripts/sh/ffworkers-run-richmenu.sh` を実行します
 - リッチメニュー作成時のメニュー画像ファイルはローカルのメニュー画像ファイル(jpg)をBase64 jsに変換して使っています
-    - 変換スクリプトは `inuichiba-ffscripts/compress-images.js` です(Windows/Macどちらも使えます)
     - 変換するファイルを予め `inuichiba-ffscripts/compress/input` にいれておいてください
+    - 変換スクリプトは `inuichiba-ffscripts/compress-images.js` です(Windows/Macどちらも使えます)
 
 ---
 

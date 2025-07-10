@@ -43,10 +43,6 @@ name = "inuichiba-ffworkers-ffdev"
 # Workers で使うには Cloudflare ダッシュボードの「Variables(プレーンテキスト)」
 # に登録してください
 # https://dash.cloudflare.com/ → Workers → 環境変数（Variables）
-
-# ALLOW_SUPABASE_WRITEは、Supabaseに無料で書き込める範囲かどうかを示すフラグです
-# 危なくなってきたらDiscord通知やyamlログなどを参照の上falseにしてください
-# 今は本番環境でしか使っていません
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
 
 # ⚠️ kv_namespaces は継承されないので明示的に定義する
