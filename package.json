@@ -9,6 +9,9 @@
 		"test": "vitest"
 	},
 	"type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
 		"@eslint/js": "^9.29.0",
