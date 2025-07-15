@@ -50,15 +50,6 @@ npx wrangler deploy --env ffprod
 
 ---
 
-## LINE Bot の Webhook URL に指定する URL
-
-```sh
-ffdev  ： https://inuichiba-ffworkers-ffdev.maltese-melody0655.workers.dev
-ffprod ： https://inuichiba-ffworkers-ffprod.maltese-melody0655.workers.dev
-```
-
----
-
 ## 📁 よく使うファイル
 ```sh
 src/richmenu-manager/data/messages.js   # テキストを変更
@@ -85,17 +76,20 @@ src/lib/env.js                          # 主に参照。isProd(ffdev/ffprodの�
 
 ### Supabase（RLS付きPostgreSQL）
 - 本プロジェクトでは **ユーザーデータの保存** に使用しています。
+- 
 - テーブル名：`users_ffprod`（本番）、`users_ffdev`（開発）
+- `users_ffprod` は1年おきに書き込まれます。`users_ffdev` は10分おきに書き込まれます。
+- メニュー連打などでいちいち Supabase に書き込まれたデータかチェックしに行くと、チェックだけでも課金対象になるため、課金枠を超えないように、代わりに KV を見に行きます。それにより、できるだけ課金されないようにしています。
 - 書き込み処理は `writeUserDataToSupabase.js` から実行されます。
-- 本番では `onConflict().ignore()`、開発では `upsert()` を使用。
-- RLS（行レベルセキュリティ）を有効化済み。
+- 本番では `onConflict().ignore()`、開発では `upsert()` を使用します。
+- RLS（行レベルセキュリティ）を有効化済みです。
 - Supabaseの書き込みに失敗するとLINE Botの機能の一部に影響します。
 
 
 ### KV（Cloudflare Workers KV）
 - Cloudflare Workers からアクセス可能な **キーバリューストア**。
-- Supabaseに書き込まれたひとりに対してひとつ作られる。
-- Flex Message の出し分けやタップ履歴など、**軽量な一時的データの保存**に使用。
+- Supabaseに書き込まれたひとりに対してひとつ作られます。
+- Flex Message の出し分けやタップ履歴など、**軽量な一時的データの保存**に使用されます。
 - 保存するキーは文字列、値も文字列やJSON。
 - FirebaseやSupabaseと違い、読み書きが非常に高速・安価です。
 - そのため、Supabaseに代わり、メニュー連打などのアクセス過多を防ぐ役割を持っています。
