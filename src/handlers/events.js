@@ -57,6 +57,7 @@ export async function handleEvent(event, env) {
 }
 
 
+
 // ///////////////////////////////////////////
 // followイベントの処理（書き込みはあとから実行）
 async function handleFollowEvent(event, env) {
@@ -66,73 +67,62 @@ async function handleFollowEvent(event, env) {
     event.source?.type === "group" ? event.source.groupId :
     event.source?.type === "room"  ? event.source.roomId :
     null;
-  const sourceType = event.source?.type ?? null;  // 'user' | 'group' | 'room'
   const eventType = "follow";
-  let p3;
   const { isProd } = getEnv(env);
 
-  // --- メッセージ生成＆返信
-  // ユーザープロフィールを取得
-  const p1 = getUserProfile(userId, env);
-  const profile = p1;
+
+  // ✅ 1. ユーザープロフィール取得（awaitする）
+  let profile = null;
+  profile = await getUserProfile(userId, env);
   const displayName = profile?.displayName || null;
   const followText = textTemplates["msgFollow"];
 
-  let mBody = (displayName == null || displayName.includes("$"))
+  const mBody = (displayName == null || displayName.includes("$"))
     ? followText
     : `${displayName}さん、${followText}`;
 
 
-  // ウェルカムメッセージを作って送る
+  // ✅ 2. ウェルカムメッセージ作成
   let message;
   try {
-    const emojiTextMessage = buildEmojiMessage("msgFollow", env, mBody);
-    message = emojiTextMessage;
+    message = buildEmojiMessage("msgFollow", env, mBody);
   } catch (error) {
-    if (!isProd) console.warn(`⚠️ follow 絵文字メッセージの構築失敗: ${error.message}`);
+    if (!isProd) console.log(`⚠️ follow 絵文字メッセージの構築失敗: ${error.message}`);
     message = { type: "text", text: "エラーが発生しました。" };
   }
 
-  const p2 = sendReplyMessage(event.replyToken, [message], env);
+
+  // ✅ 3. LINE返信を送る（await）
+  try {
+    await sendReplyMessage(event.replyToken, [message], env);
+  } catch (err) {
+    if (!isProd) console.log("⚠️ replyメッセージ送信失敗:", err);
+    return new Response(eventType + " NG", { status: 400 });
+  }
 
 
-  // --- 書き込みはあとで非同期に（UI優先！）
-  // 有償を避けるため follow eventしか書き込まない
+  // ✅ 4. Supabaseへ保存（awaitして結果をreturn）
   if (userId) {
     try {
-      p3 = saveUserProfileAndWrite(userId, groupId, env);
+      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
+      return result;  // ← Response("OK") / "SKIPPED" / "NG"
     } catch (err) {
-      if (!isProd) console.warn(`⚠️ ${eventType}書き込み失敗: 種別=${sourceType}`, err.message);
+      if (!isProd) console.log("⚠️ Supabase書き込み例外:", err.message);
+      return new Response(eventType + " NG", { status: 500 });
     }
   }
 
-
-  // すべての非同期処理が終わるのを待つ
-  const promises = [];
-
-  if (typeof p1 !== "undefined") promises.push(p1);
-  if (typeof p2 !== "undefined") promises.push(p2);
-  if (typeof p3 !== "undefined") promises.push(p3);
-
-  try {
-    // 📌 現在は Promise の戻り値（results）は使用していないが、
-    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
-    //    必要になったら const results = await Promise.all(promises); に戻すこと。
-    await Promise.all(promises);
-  } catch (err) {
-    if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
-    return new Response(`${eventType} NG`, { status: 400 });
-  }
-
-  return new Response(`${eventType} OK`, { status: 200 });
-
+  // ✅ ユーザーIDが無い場合もOKを返す
+  return new Response(eventType + " OK", { status: 200 });
 }
 
 
+
 // ///////////////////////////////////////////
-// messageイベントの処理（書き込みは後ろで非同期）
+// messageイベントの処理（Supabase書き込みは非同期で裏に回す）
 async function handleMessageEvent(event, env) {
   const { lineQRMessages, msgY, msgPostpone } = createMessages(env);
+	const { isProd } = getEnv(env);
 	const userId = event.source?.userId ?? null;
 	const sourceType = event.source?.type ?? null;  // 'user' | 'group' | 'room'
   const groupId =
@@ -141,62 +131,57 @@ async function handleMessageEvent(event, env) {
     null;
   const data = event.message.text;
   const eventType = "message";
-	let message = [];
-  let p1, p2;
+
+  let message;
 
 
-	// LINE公式アカウントの「自動応答対象ワード」はBotが代わりに返信
-	if (data === "QRコード" || data === "友だち追加") {
-    message = lineQRMessages;
-    p1 = sendReplyMessage(event.replyToken, message, env);
-  }
-	// グループ or ルームからのメッセージは、LINE自動応答メッセージのみBotの代わりに返信
-	// 他は完全に無視
-	else if (sourceType === "group" || sourceType === "room") {
-    return new Response(`${eventType} OK`, { status: 200 });
-  }
-  // 以下は「個人チャット」で、自動応答以外のメッセージ
-	else if (data === "ワイワイ") {
-    message = [{ type: "text", text: msgY }];
-    p1 = sendReplyMessage(event.replyToken, message, env);
-  }
-  // 上記すべてに該当しない場合
-	else {
-    message = [{ type: "text", text: msgPostpone }];
-    p1 = sendReplyMessage(event.replyToken, message, env);
-  }
-
-  // --- Supabase書き込みはメッセージ送信後、後回しに実行（非同期）
-  const { isProd } = getEnv(env);
-
-  if (userId) {
-    try {
-      p2 = saveUserProfileAndWrite(userId, groupId, env);
-    } catch (err) {
-      if (!isProd) console.warn(`⚠️ ${eventType}書き込み失敗: 種別=${sourceType}`, err.message);
-      return new Response(`${eventType} NG`, { status: 400 });
+	// --- A. グループ・ルームからのメッセージは特定のワード以外は無視
+  // LINE公式アカウントの「自動応答対象ワード」のみBotが代わりに返信
+  if (sourceType === "group" || sourceType === "room") {
+    if (data === "QRコード" || data === "友だち追加") {
+      message = lineQRMessages;
+    } else {
+      return new Response(eventType + " OK", { status: 200 });
     }
   }
 
-  // すべての非同期処理が終わるのを待つ
-  const promises = [];
-
-  if (typeof p1 !== "undefined") promises.push(p1);
-  if (typeof p2 !== "undefined") promises.push(p2);
-
-  try {
-    // 📌 現在は Promise の戻り値（results）は使用していないが、
-    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
-    //    必要になったら const results = await Promise.all(promises); に戻すこと。
-    await Promise.all(promises);
-  } catch (err) {
-    if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
-    return new Response(`${eventType} NG`, { status: 400 });
+  // --- B. 個人チャットの応答メッセージ生成
+  else {
+    if (data === "QRコード" || data === "友だち追加") {
+      message = lineQRMessages;
+    } else if (data === "ワイワイ") {
+      message = [{ type: "text", text: msgY }];
+    } else {
+      message = [{ type: "text", text: msgPostpone }];
+    }
   }
 
-  return new Response(`${eventType} OK`, { status: 200 });
 
+  // --- C. LINE応答（失敗時はエラーを返す）
+  try {
+    await sendReplyMessage(event.replyToken, message, env);
+  } catch (err) {
+    if (!isProd) console.log("⚠️ LINE応答でエラー:", err);
+    return new Response(eventType + " NG", { status: 400 });
+  }
+
+
+  // --- D. Supabase書き込み（userIdがあれば同期的に書き込む）
+  if (userId) {
+    try {
+      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
+      return result; // Response("OK" / "SKIPPED" / "NG")
+    } catch (err) {
+      if (!isProd) console.log("⚠️ Supabase書き込み中例外", err.message);
+      return new Response(eventType + " NG", { status: 500 });
+    }
+  }
+
+
+  // --- E. userIdがない場合もOK返す（Supabaseには書かれない）
+  return new Response(eventType + " OK", { status: 200 });
 }
+
 
 
 // ///////////////////////////////////////////
@@ -204,58 +189,45 @@ async function handleMessageEvent(event, env) {
 async function handlePostbackEvent(event, env) {
   const data = event.postback.data;
 	const userId = event.source?.userId ?? null;
-	const sourceType = event.source?.type ?? null;  // 'user' | 'group' | 'room'
   const groupId =
     event.source?.type === "group" ? event.source.groupId :
     event.source?.type === "room"  ? event.source.roomId :
     null;
   const eventType = "postback";
-  let p1, p2;
-
-  // --- A. メニュータップ系（返信処理）
-  if (data.startsWith("tap_richMenu")) {
-    p1 = await handleRichMenuTap(data, event.replyToken, env);
-  }
-
-  // --- B. タブ切り替えなど、今は何もしないケース
-  // タブ切り替え。安定したのでログ不要
-  if (data === "change to A" || data === "change to B") {
-    // if (!isProd) console.log("🔁 タブ切り替え postback 受信（許可）:", data);
-    return new Response("Postback OK", { status: 200 });
-  }
-
-  // --- C. 書き込み処理
-  // --- Supabase書き込みはメッセージ送信後、後回しに実行（非同期）
   const { isProd } = getEnv(env);
 
-  if (userId) {
+  // --- A. タブ切り替え系（今は何もしない）
+  if (data === "change to A" || data === "change to B") {
+    return new Response(eventType + " OK", { status: 200 });
+  }
+
+
+  // --- B. メニュータップ系の返信処理（awaitで応答を待つ）
+  if (data.startsWith("tap_richMenu")) {
     try {
-      p2 = saveUserProfileAndWrite(userId, groupId, env);
+      await handleRichMenuTap(data, event.replyToken, env);
     } catch (err) {
-      if (!isProd) console.warn(`⚠️ ${eventType}書き込み失敗: 種別=${sourceType}`, err.message);
-      return new Response(`${eventType} NG`, { status: 400 });
+      if (!isProd) console.warn(`⚠️ メニュータップ応答失敗:`, err);
+      return new Response(eventType + " NG", { status: 400 });
     }
   }
 
-  // すべての非同期処理が終わるのを待つ
-  const promises = [];
 
-  if (typeof p1 !== "undefined") promises.push(p1);
-  if (typeof p2 !== "undefined") promises.push(p2);
-
-  try {
-    // 📌 現在は Promise の戻り値（results）は使用していないが、
-    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
-    //    必要になったら const results = await Promise.all(promises); に戻すこと。
-    await Promise.all(promises);
-  } catch (err) {
-    if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
-    return new Response(`${eventType} NG`, { status: 400 });
+  // --- C. Supabase書き込み（awaitで待ち、エラーを返す構造）
+  if (userId) {
+    try {
+      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
+      return result; // Response("OK" / "NG" / "SKIPPED")
+    } catch (err) {
+      if (!isProd) console.warn(`⚠️ Supabase書き込み例外`, err);
+      return new Response(eventType + " NG", { status: 500 });
+    }
   }
 
-  return new Response(`${eventType} OK`, { status: 200 });
-
+  // userIdがなかった場合もOKを返す
+  return new Response(eventType + " OK", { status: 200 });
 }
+
 
 
 // ///////////////////////////////////////////
@@ -332,52 +304,46 @@ async function handleRichMenuTap(data, replyToken, env) {
 }
 
 
+
 // ///////////////////////////////////////////
 // joinイベント（グループやルームに招待されたときの挨拶）
 async function handleJoinEvent(event, env) {
-    const { msgJoin } = createMessages(env);
+  const { msgJoin } = createMessages(env);
   const userId = event.source?.userId ?? null;
   const groupId =
     event.source?.type === "group" ? event.source.groupId :
     event.source?.type === "room"  ? event.source.roomId :
     null;
-  const sourceType = event.source?.type ?? null;  // 'user' | 'group' | 'room'
   const eventType = "join";
-  let p2;
 
   const { isProd } = getEnv(env);
 
-  const welcomeMessage = { type: "text", text: msgJoin };
-  const p1 = sendReplyMessage(event.replyToken, [welcomeMessage], env);
 
+  // --- A. 仲間に入れてくれてありがとうメッセージの送信
+  const welcomeMessage = { type: "text", text: msgJoin };
+  try {
+    await sendReplyMessage(event.replyToken, [welcomeMessage], env);
+  } catch (err) {
+    if (!isProd) console.warn(`⚠️ ${eventType}の応答メッセージ送信失敗:`, err);
+    return new Response(eventType + " NG", { status: 400 });
+  }
+
+
+  // --- B. Supabase書き込み処理
   if (userId) {
     try {
-      p2 = saveUserProfileAndWrite(userId, groupId, env);
+      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
+      return result; // Response("OK" / "NG" / "SKIPPED")
     } catch (err) {
-      if (!isProd) console.warn(`⚠️ ${eventType}書き込み失敗: 種別=${sourceType}`, err.message);
-      return new Response(`${eventType} NG`, { status: 400 });
+      if (!isProd) console.warn(`⚠️ ${eventType} Supabase書き込み例外:`, err);
+      return new Response(eventType + " NG", { status: 500 });
     }
   }
 
-  // すべての非同期処理が終わるのを待つ
-  const promises = [];
-
-  if (typeof p1 !== "undefined") promises.push(p1);
-  if (typeof p2 !== "undefined") promises.push(p2);
-
-  try {
-    // 📌 現在は Promise の戻り値（results）は使用していないが、
-    //    将来的に各処理（p1/p2/p3など）の結果を個別に使う可能性がある。
-    //    必要になったら const results = await Promise.all(promises); に戻すこと。
-    await Promise.all(promises);
-  } catch (err) {
-    if (!isProd) console.warn(`⚠️ ${eventType}イベントでエラーが発生しました。処理は中断されました: 種別=${sourceType}`, err);
-    return new Response(`${eventType} NG`, { status: 400 });
-  }
-
-  return new Response(`${eventType} OK`, { status: 200 });
-
+  // userId がなかった場合も OK を返す
+  return new Response(eventType + " OK", { status: 200 });
 }
+
 
 
 // /////////////////////////////////////////
@@ -437,6 +403,7 @@ function buildEmojiMessage(templateKey, env, mBody) {
     emojis: emojis
   };
 }
+
 
 
 // ----------- ↓ ここからカルーセルメッセージたち ↓ -----------

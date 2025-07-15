@@ -7,7 +7,7 @@ import { getFormattedJST } from "./saveUserInfo.js";
  * @param {object} env - 環境変数（supabaseUrl, supabaseKey を含む）
  */
 export async function writeUserDataToSupabase(userData, env) {
-  const { isProd, supabaseUrl, supabaseKey, usersTable } = getEnv(env);
+  const { isProd, supabaseUrl, supabaseKey, usersTable, usersKV } = getEnv(env);
 
   const {
     timestamp,
@@ -33,7 +33,7 @@ export async function writeUserDataToSupabase(userData, env) {
   try {
 
     // ✅ 1. KVに該当キーが存在するか確認（TTL内の書き込み済みかどうか）
-    const existing = await env.users_kv.get(kvKey);
+    const existing = await usersKV.get(kvKey);
     if (existing) {
       if (!isProd) console.log("⚠️ KV により Supabase 書き込みスキップ(正常終了):", kvKey);
       return { skipped: true };
@@ -46,8 +46,8 @@ export async function writeUserDataToSupabase(userData, env) {
       "apikey": supabaseKey,
       "Authorization": `Bearer ${supabaseKey}`,
       "Prefer": isProd
-        ? "resolution=ignore-duplicates,return=minimal" // ✅ 重複があっても無視してレスポンス最小化
-        : "resolution=merge-duplicates,return=representation",  // 開発中は更新を許可
+        ? "resolution=ignore-duplicates,return=representation" // 重複があったら Supabase 側が明確に「insertできたか、重複で無視されたか」を返す
+        : "resolution=merge-duplicates,return=representation", // 開発中は更新を許可
     };
 
     const body = JSON.stringify(userData);
@@ -61,6 +61,26 @@ export async function writeUserDataToSupabase(userData, env) {
       upsertResult = await upsertRes.text(); // fallback
     }
 
+
+    // ✅ 重複（＝何もinsertされてない）とみなせるレスポンスへの対応
+    // 409に限らず「レスポンスが空配列のとき」もスキップとしてKV補完する
+    // → そうしないと、永遠にSupabaseへ同一リクエストが送られ続けることになり、
+    //   将来的な課金リスクが継続するから
+    if (isProd && Array.isArray(upsertResult) && upsertResult.length === 0) {
+      // ffprodのことなので必ずコンソールに出力する
+      console.warn("⚠️ Supabase重複により何も書き込まれなかった → KVを補完:", kvKey);
+      try {
+        await usersKV.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
+      } catch (kvErr) {
+        console.error("⚠️ KVへの再登録に失敗:", kvErr);
+      }
+      return { skipped: true };
+    }
+
+    // 🔍 ログ確認用（削除予定）
+    console.warn("⚠️ 書き込み失敗(409を期待)：", upsertRes.status);
+
+
     // ✅ 3. 書き込み失敗時（409やその他）
     if (!upsertRes.ok) {
       // ✅ 特別処理：409 Conflict（ユニークキー重複＝KV TTL切れ or Cloudflare障害）
@@ -69,7 +89,7 @@ export async function writeUserDataToSupabase(userData, env) {
         console.warn("⚠️ Supabaseに既存データがあり、KVは消失またはTTL切れでした:", kvKey);
         try {
           // KVに再保存して今後1年間スキップ対象にする
-          await env.users_kv.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
+          await usersKV.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
         } catch (kvErr) {
           console.error("⚠️ KVへの再登録に失敗:",  kvErr);
           // 処理は続ける（止めない）
@@ -89,7 +109,7 @@ export async function writeUserDataToSupabase(userData, env) {
     // ✅ 4. Supabase書き込み成功 → KVにも記録して次回以降スキップ
     const ttl = isProd ? 60 * 60 * 24 * 365 : 600; // 秒: 本番は1年、開発は600秒
     try {
-      await env.users_kv.put(kvKey, "1", { expirationTtl: ttl });
+      await usersKV.put(kvKey, "1", { expirationTtl: ttl });
     } catch(kvErr) {
       console.error("❌ Supabase 書き込みは成功したが、KV保存に失敗:", kvErr);
       // 書き込みは成功してるので止めない

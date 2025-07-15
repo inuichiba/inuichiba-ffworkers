@@ -20,46 +20,41 @@ workers_dev = true
 # 使う場合は明示的に互換設定が必要
 compatibility_flags = ["nodejs_compat"]
 
-# 本番環境用KV(Supabase連打スキップ機能)
-[[kv_namespaces]]
-binding = "users_kv"
-id = "9cc8cd1153a34a66a4e1bf313078664c"
-preview_id = "4ebfa42f89f7478888677c5486b6b540"
-
 # 🌍 通常は Workers.dev を使用（routes や zones は省略）
 # route = ""
 # zone_id = ""
 
 
 # ==========================
-# ✅ 開発環境 ffdev
+# ✅ 本番環境 ffprod
 # ==========================
-[env.ffdev]
+[env.ffprod]
 # デプロイ時のWorker名
-name = "inuichiba-ffworkers-ffdev"
-
+name = "inuichiba-ffworkers-ffprod"
 # ⚠️ この vars セクションは Cloudflare Pages の "ビルド時" 変数用です
 # Cloudflare Workers の env.GCLOUD_PROJECT には渡されません
 # Workers で使うには Cloudflare ダッシュボードの「Variables(プレーンテキスト)」
 # に登録してください
 # https://dash.cloudflare.com/ → Workers → 環境変数（Variables）
-vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
-
-# ⚠️ kv_namespaces は継承されないので明示的に定義する
-[[env.ffdev.kv_namespaces]]
-binding = "users_kv"
-id = "4ebfa42f89f7478888677c5486b6b540"
-
-
-# ==========================
-# ✅ 本番環境 ffprod
-# ==========================
-[env.ffprod]
-name = "inuichiba-ffworkers-ffprod"
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffprod" }
 
-[[env.ffprod.kv_namespaces]]
-binding = "users_kv"
-id = "9cc8cd1153a34a66a4e1bf313078664c"
+kv_namespaces = [
+  { binding = "users_kv_ffprod", id = "9cc8cd1153a34a66a4e1bf313078664c", preview_id = "4ebfa42f89f7478888677c5486b6b540" }
+]
+
+
+
+# ==========================
+# ✅ 開発環境 ffdev
+# ==========================
+[env.ffdev]
+name = "inuichiba-ffworkers-ffdev"
+vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
+
+kv_namespaces = [
+  { binding = "users_kv_ffdev", id = "4ebfa42f89f7478888677c5486b6b540", preview_id = "4ebfa42f89f7478888677c5486b6b540" }
+]
+
+
 
 

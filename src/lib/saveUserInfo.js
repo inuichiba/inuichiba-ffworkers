@@ -22,9 +22,10 @@ export function getFormattedJST() {
  * Supabase にユーザーデータを書き込む（ffprod=初回のみ、ffdev=毎回上書き）
  * @param {object} userId - Supabase に保存するキーのひとつ
  * @param {object} groupId - Supabase に保存するキーのひとつ
+ * @param {object} label - 今実行しているイベント名(follow/message/postback/join)
  * @param {object} env - 環境変数（supabaseUrl, supabaseKey を含む）
  */
-export async function saveUserProfileAndWrite(userId, groupId, env) {
+export async function saveUserProfileAndWrite(userId, groupId, eventType, env) {
   const { isProd } = getEnv(env);
 
   const profile = await getUserProfile(userId, env);
@@ -56,33 +57,33 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
       inputData
     }, env);
 
-   // await delAndPutKV("all", "U4f4509e648b3cb14cfe8c9a14a4eade9", null, "60", env);
+    // await delAndPutKV("all", "U4f4509e648b3cb14cfe8c9a14a4eade9", null, "60", env);
 
-   // コンソールログは writeUserDataToSupabase() が出してるので出さない
+    // eventTypeの入れ損ねをココで救う
+    const label = eventType ?? "unknown";
+
+    // コンソールログは writeUserDataToSupabase() が出してるので出さない
+
+    // KVでスキップしてSupabaseに書き込まなかったとき
     if (result?.skipped) {
-      // if (!isProd) console.log("⚠️ KVによりSupabase書き込みスキップ");
-      // return new Response("SKIPPED", { status: 200 });
-      return { skipped: true };
+      return new Response(label + " SKIPPED", { status: 200 });
     }
 
+    // エラー通知や再試行判定
     if (result?.error) {
-      // if (!isProd) console.error("❌ Supabaseへの書き込み失敗:", result.error);
-      // エラー通知や再試行判定
-      // return new Response("ERROR", { status: 500 });
-      return { error: result?.error };
+      return new Response(label + " NG", { status: 500 });
     }
 
-    // 成功時
-    // if (!isProd) console.log("✅ Supabase書き込み成功");
-    // return new Response("OK", { status: 200 });
-    return { success: true };
+    // それ以外は成功
+    return new Response(label + " OK", { status: 200 });
 
   } catch (err) {
+    const label = eventType ?? "unknown";
     console.error("💥 Supabase KV または書き込み処理中に例外:", err);
-    // return new Response("ERROR", { status: 500 });
-   return { error: err };
+    return new Response(label + " NG", { status: 500 });
   }
 }
+
 
 
 /**
@@ -94,7 +95,7 @@ export async function saveUserProfileAndWrite(userId, groupId, env) {
  * @param {object} env - 環境変数（supabaseUrl, supabaseKey を含む）
  */
 async function delAndPutKV(KVKind, userId, groupId, ttl, env) {
-  const users_kv = env.users_kv;
+  const { usersKV } = getEnv(env);
   groupId = groupId ?? "default";
 
   if (!userId) {
@@ -106,11 +107,11 @@ async function delAndPutKV(KVKind, userId, groupId, ttl, env) {
 
   if (KVKind == "del" || KVKind == "all") {
     try {
-      const existing = await env.users_kv.get(kvKey);
+      const existing = await usersKV.get(kvKey);
       if (!existing) {
         console.log("🟡 KVキーは既に存在しません:", kvKey);
       } else {
-        await users_kv.delete(kvKey);
+        await usersKV.delete(kvKey);
         console.log("🗑️ KVキーを削除しました:", kvKey);
       }
     } catch (err) {
@@ -123,7 +124,7 @@ async function delAndPutKV(KVKind, userId, groupId, ttl, env) {
     if (!ttl) ttl = 600;
     const value = JSON.stringify({ "writtenAt": timestamp, "TTL": ttl, "source": "LINE_BOT", "note": "first write" });
     try {
-      await users_kv.put(kvKey, value, { expirationTtl: ttl }); // TTLは開発用
+      await usersKV.put(kvKey, value, { expirationTtl: ttl }); // TTLは開発用
       console.log(`✅ KV に書き込み成功: kvKey=${kvKey}, TTL=${ttl}`);
     } catch (err) {
       console.error("❌ KV 書き込み失敗:", err);
