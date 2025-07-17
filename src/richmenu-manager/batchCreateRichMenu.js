@@ -6,8 +6,8 @@
 //   .\ffworkers-run-richmenu.ps1 -env ffprod       	--- 本番環境用
 //
 // Mac/Unixの場合
-//   /Users/yourname/projectname/ffworkers-run-richmenu.sh -env ffdev(既定値)  --- 開発環境用
-//   /Users/yourname/projectname/ffworkers-run-richmenu.sh -env ffprod       	--- 本番環境用
+//   /Users/yourname/projectname/sh/ffworkers-run-richmenu.sh -env ffdev(既定値)  --- 開発環境用
+//   /Users/yourname/projectname/sh/ffworkers-run-richmenu.sh -env ffprod       	--- 本番環境用
 
 import { deleteRichMenusAndAliases } from './deleteAllRichMenus.js';
 import { handleRichMenu } from './richMenuHandler.js';

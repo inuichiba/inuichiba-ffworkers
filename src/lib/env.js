@@ -28,12 +28,13 @@ export function getEnv(env) {
 		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
 		baseDir:            "https://inuichiba-ffimages.pages.dev/",
     usersKV:            isProd ? env.users_kv_ffprod : env.users_kv_ffdev,
+    kvApiToken:         isProd ? env.KV_API_TOKEN_FFPROD : env.KV_API_TOKEN_FFDEV,
 	};
 
 }		// getEnvの終わり
 
 // =======================================
-// 現時点ではタブ付きリッチメニュー用に特化した関数
+// タブ付きリッチメニュー用スクリプトに特化した関数
 // (ディレクトリを確保する関数は別にあるので注意)
 // =======================================
 export function getEnvInfo(env) {

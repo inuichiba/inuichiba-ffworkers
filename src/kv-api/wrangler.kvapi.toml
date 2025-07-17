@@ -1,28 +1,23 @@
-# 📛 ベース名（この name は fallback 用。各環境で上書きされます）
-name = "inuichiba-ffworkers"
+
+name = "inuichiba-ffworkers-kvapi"
 
 # エントリーポイント
-main = "src/index.js"
-
-# ✅ Cloudflare Workers は .js が ESM（ES Modules）形式なら自動的に module 型を検出
-# type = "module"
+# src/kv-api/wrangler.kvapi.toml
+main = "kv-api.js"
 
 # 📅 Wrangler の日付
-compatibility_date = "2025-06-24"
-
-# 💳 Cloudflare アカウント
-account_id = "39914da7b7f259b59d901f0b57cc17cc"
+compatibility_date = "2024-07-17"
 
 # 独自ドメインがないときは true
 workers_dev = true
 
+
+# 💳 Cloudflare アカウント
+# account_id = "39914da7b7f259b59d901f0b57cc17cc"
+
 # Wrangler 4.20以降では、Node.js 標準モジュール（たとえば os）を
 # 使う場合は明示的に互換設定が必要
-compatibility_flags = ["nodejs_compat"]
-
-# 🌍 通常は Workers.dev を使用（routes や zones は省略）
-# route = ""
-# zone_id = ""
+# compatibility_flags = ["nodejs_compat"]
 
 
 # ==========================
@@ -30,7 +25,8 @@ compatibility_flags = ["nodejs_compat"]
 # ==========================
 [env.ffprod]
 # デプロイ時のWorker名
-name = "inuichiba-ffworkers-ffprod"
+name = "inuichiba-ffworkers-kvapi-ffprod"
+
 # ⚠️ この vars セクションは Cloudflare Pages の "ビルド時" 変数用です
 # Cloudflare Workers の env.GCLOUD_PROJECT には渡されません
 # Workers で使うには Cloudflare ダッシュボードの「Variables(プレーンテキスト)」
@@ -47,7 +43,8 @@ kv_namespaces = [
 # ✅ 開発環境 ffdev
 # ==========================
 [env.ffdev]
-name = "inuichiba-ffworkers-ffdev"
+name = "inuichiba-ffworkers-kvapi-ffdev"
+
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
 
 kv_namespaces = [

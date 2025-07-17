@@ -77,10 +77,6 @@ export async function writeUserDataToSupabase(userData, env) {
       return { skipped: true };
     }
 
-    // 🔍 ログ確認用（削除予定）
-    console.warn("⚠️ 書き込み失敗(409を期待)：", upsertRes.status);
-
-
     // ✅ 3. 書き込み失敗時（409やその他）
     if (!upsertRes.ok) {
       // ✅ 特別処理：409 Conflict（ユニークキー重複＝KV TTL切れ or Cloudflare障害）

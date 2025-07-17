@@ -1,6 +1,6 @@
 //lib/lineApiHelpers.js
 
-import { getEnv } from"../lib/env.js";
+import { getEnv } from"./env.js";
 
 // ///////////////////////////////////////////////
 // Replyメッセージ送信
@@ -23,8 +23,8 @@ export async function sendReplyMessage(replyToken, messages, env) {
       if (!isProd) console.warn(`❌ LINEメッセージ送信失敗: ${response.status} - ${errorText}`);
     } else {
       if (!isProd) console.log("✅ LINEメッセージ送信成功");
-    }  
-  
+    }
+
   } catch (err) {
     console.error("❌ ネットワークエラー:", err.message);
   }
@@ -93,5 +93,5 @@ export async function getUserProfile(userId, env) {
     console.error("❌ ネットワークエラー（ユーザープロフィール取得）:", err.message);
     return null;
   }
-  
+
 }
