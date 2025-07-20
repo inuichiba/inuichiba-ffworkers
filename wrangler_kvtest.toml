@@ -1,0 +1,13 @@
+name = "inuichiba-ffworkers-kvtest"
+main = "src/kv-test.js"
+compatibility_date = "2024-05-01"
+account_id = "39914da7b7f259b59d901f0b57cc17cc"
+workers_dev = true
+compatibility_flags = []
+
+[env.ffprod]
+name = "inuichiba-ffworkers-kvtest-ffprod"
+
+[[env.ffprod.kv_namespaces]]
+binding = "usersKV"
+id = "9cc8cd1153a34a66a4e1bf313078664c" # ← ffprod-users_kv のID

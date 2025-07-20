@@ -1,13 +1,16 @@
 // handlers/events.js
-// ✅ 最新版：events.js
 
-import { saveUserProfileAndWrite } from"../lib/saveUserInfo.js";
 import { sendReplyMessage, getUserProfile } from"../lib/lineApiHelpers.js";
 import { createMessages } from"../richmenu-manager/data/messages.js";
 import { getEnv } from "../lib/env.js";
 
-// ///////////////////////////////////////////
-// eventタイプで処理を振り分ける
+/**
+ * LINEからのイベントをイベント内容によって振り分けて処理する
+ * event処理をする場合は、index.jsにイベント内容を定義するのを忘れないこと
+ * event処理をしないイベントとは、無視やコンソールログを出すだけしか処理しないイベントのこと
+ * @param {object} event - LINE Webhook Event
+ * @param {object} env - 環境変数
+ */
 export async function handleEvent(event, env) {
 
   const { isProd } = getEnv(env);
@@ -30,6 +33,7 @@ export async function handleEvent(event, env) {
       break;
 
     case 'join':
+      if (!isProd) console.log("🚪 グループに参加しました:", event.source?.groupId || event.source?.roomId);
       await handleJoinEvent(event, env);
       break;
 
@@ -49,24 +53,21 @@ export async function handleEvent(event, env) {
       // 未処理イベントだけ本番でも出してみる
       // 多すぎたら対応するか無視するかログを抑制する
       console.log("❓ 未処理イベントタイプ:", event.type);
-      return new Response("❓ 未対応のイベント", { status: 400 });
+      break;
   }
 
-  return new Response("Done", { status: 200 });
+  // ✅ Supabase書き込みは、index.jsが非同期で「裏に投げる」ので
+  // ここでは何もせずリターンするだけ。
 
 }
 
 
 
 // ///////////////////////////////////////////
-// followイベントの処理（書き込みはあとから実行）
+// followイベントの処理（書き込みはリターンして非同期で実行）
 async function handleFollowEvent(event, env) {
   const { textTemplates } = createMessages(env);
   const userId = event.source?.userId ?? null;
-  const groupId =
-    event.source?.type === "group" ? event.source.groupId :
-    event.source?.type === "room"  ? event.source.roomId :
-    null;
   const eventType = "follow";
   const { isProd } = getEnv(env);
 
@@ -87,7 +88,7 @@ async function handleFollowEvent(event, env) {
   try {
     message = buildEmojiMessage("msgFollow", env, mBody);
   } catch (error) {
-    if (!isProd) console.log(`⚠️ follow 絵文字メッセージの構築失敗: ${error.message}`);
+    if (!isProd) console.log(`⚠️ ${eventType} 絵文字メッセージの構築失敗: ${error.message}`);
     message = { type: "text", text: "エラーが発生しました。" };
   }
 
@@ -96,24 +97,11 @@ async function handleFollowEvent(event, env) {
   try {
     await sendReplyMessage(event.replyToken, [message], env);
   } catch (err) {
-    if (!isProd) console.log("⚠️ replyメッセージ送信失敗:", err);
-    return new Response(eventType + " NG", { status: 400 });
+    if (!isProd) console.log(`⚠️ ${eventType} で reply メッセージ送信失敗:`, err);
   }
 
+  // 非同期処理なのでリターンコードは無視されて上位で常に200にされる
 
-  // ✅ 4. Supabaseへ保存（awaitして結果をreturn）
-  if (userId) {
-    try {
-      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
-      return result;  // ← Response("OK") / "SKIPPED" / "NG"
-    } catch (err) {
-      if (!isProd) console.log("⚠️ Supabase書き込み例外:", err.message);
-      return new Response(eventType + " NG", { status: 500 });
-    }
-  }
-
-  // ✅ ユーザーIDが無い場合もOKを返す
-  return new Response(eventType + " OK", { status: 200 });
 }
 
 
@@ -123,29 +111,24 @@ async function handleFollowEvent(event, env) {
 async function handleMessageEvent(event, env) {
   const { lineQRMessages, msgY, msgPostpone } = createMessages(env);
 	const { isProd } = getEnv(env);
-	const userId = event.source?.userId ?? null;
 	const sourceType = event.source?.type ?? null;  // 'user' | 'group' | 'room'
-  const groupId =
-    event.source?.type === "group" ? event.source.groupId :
-    event.source?.type === "room"  ? event.source.roomId :
-    null;
   const data = event.message.text;
   const eventType = "message";
 
   let message;
 
 
-	// --- A. グループ・ルームからのメッセージは特定のワード以外は無視
+	// ✅ 1. グループ・ルームからのメッセージは特定のワード以外は無視
   // LINE公式アカウントの「自動応答対象ワード」のみBotが代わりに返信
   if (sourceType === "group" || sourceType === "room") {
     if (data === "QRコード" || data === "友だち追加") {
       message = lineQRMessages;
     } else {
-      return new Response(eventType + " OK", { status: 200 });
+      return;
     }
   }
 
-  // --- B. 個人チャットの応答メッセージ生成
+  // ✅ 2. 個人チャットの応答メッセージ生成
   else {
     if (data === "QRコード" || data === "友だち追加") {
       message = lineQRMessages;
@@ -157,29 +140,15 @@ async function handleMessageEvent(event, env) {
   }
 
 
-  // --- C. LINE応答（失敗時はエラーを返す）
+  // ✅ 3. LINE応答（失敗時はエラーログを返す）
   try {
     await sendReplyMessage(event.replyToken, message, env);
   } catch (err) {
-    if (!isProd) console.log("⚠️ LINE応答でエラー:", err);
-    return new Response(eventType + " NG", { status: 400 });
+    if (!isProd) console.log(`⚠️ ${eventType} で reply メッセージ送信失敗:`, err);
   }
 
+  // 非同期処理(Supabaseは裏に回す)のでリターンコードはいつも200
 
-  // --- D. Supabase書き込み（userIdがあれば同期的に書き込む）
-  if (userId) {
-    try {
-      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
-      return result; // Response("OK" / "SKIPPED" / "NG")
-    } catch (err) {
-      if (!isProd) console.log("⚠️ Supabase書き込み中例外", err.message);
-      return new Response(eventType + " NG", { status: 500 });
-    }
-  }
-
-
-  // --- E. userIdがない場合もOK返す（Supabaseには書かれない）
-  return new Response(eventType + " OK", { status: 200 });
 }
 
 
@@ -188,44 +157,24 @@ async function handleMessageEvent(event, env) {
 // メニュータップ時に通知されるpostback処理を行う
 async function handlePostbackEvent(event, env) {
   const data = event.postback.data;
-	const userId = event.source?.userId ?? null;
-  const groupId =
-    event.source?.type === "group" ? event.source.groupId :
-    event.source?.type === "room"  ? event.source.roomId :
-    null;
-  const eventType = "postback";
   const { isProd } = getEnv(env);
+  const eventType = "postback";
 
-  // --- A. タブ切り替え系（今は何もしない）
+  // ✅ 1. タブ切り替え系（今は何もしない）
   if (data === "change to A" || data === "change to B") {
-    return new Response(eventType + " OK", { status: 200 });
+    return;
   }
 
 
-  // --- B. メニュータップ系の返信処理（awaitで応答を待つ）
+  // ✅ 2. メニュータップ系の返信処理（awaitで応答を待つ）
   if (data.startsWith("tap_richMenu")) {
     try {
       await handleRichMenuTap(data, event.replyToken, env);
     } catch (err) {
-      if (!isProd) console.warn(`⚠️ メニュータップ応答失敗:`, err);
-      return new Response(eventType + " NG", { status: 400 });
+      if (!isProd) console.warn(`⚠️ ${eventType} メニュータップ応答に失敗しました:`, err);
     }
   }
 
-
-  // --- C. Supabase書き込み（awaitで待ち、エラーを返す構造）
-  if (userId) {
-    try {
-      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
-      return result; // Response("OK" / "NG" / "SKIPPED")
-    } catch (err) {
-      if (!isProd) console.warn(`⚠️ Supabase書き込み例外`, err);
-      return new Response(eventType + " NG", { status: 500 });
-    }
-  }
-
-  // userIdがなかった場合もOKを返す
-  return new Response(eventType + " OK", { status: 200 });
 }
 
 
@@ -236,6 +185,7 @@ async function handleRichMenuTap(data, replyToken, env) {
   const { mediaMessages, textMessages, textTemplates } = createMessages(env);
   let messages = [];
   let carouselFlg = false;
+  const eventType = "postback";
 
   if (textMessages[data]) {
     messages = textMessages[data];
@@ -274,7 +224,7 @@ async function handleRichMenuTap(data, replyToken, env) {
       messages.push(emojiTextMessage);
     }
   } catch (error) {
-    if (!isProd) console.warn(`⚠️ message 絵文字メッセージの構築失敗: ${error.message}`);
+    if (!isProd) console.warn(`⚠️ ${eventType} 絵文字メッセージの構築失敗: ${error.message}`);
   }
 
 
@@ -297,8 +247,7 @@ async function handleRichMenuTap(data, replyToken, env) {
     }
   }
 
-
-  // 送信(Supabase書き込みは呼び出し側で行う)
+  // 送信(Supabase書き込みは handleEvent() で非同期に裏に回って行う)
   await sendReplyMessage(replyToken, messages, env);
 
 }
@@ -307,41 +256,24 @@ async function handleRichMenuTap(data, replyToken, env) {
 
 // ///////////////////////////////////////////
 // joinイベント（グループやルームに招待されたときの挨拶）
+// 多分だせないのであきらめる
 async function handleJoinEvent(event, env) {
   const { msgJoin } = createMessages(env);
-  const userId = event.source?.userId ?? null;
-  const groupId =
-    event.source?.type === "group" ? event.source.groupId :
-    event.source?.type === "room"  ? event.source.roomId :
-    null;
+  const { isProd } = getEnv(env);
   const eventType = "join";
 
-  const { isProd } = getEnv(env);
 
-
-  // --- A. 仲間に入れてくれてありがとうメッセージの送信
-  const welcomeMessage = { type: "text", text: msgJoin };
+  // ✅ 仲間に入れてくれてありがとうメッセージの送信
+  const thanksMessage = { type: "text", text: msgJoin };
   try {
-    await sendReplyMessage(event.replyToken, [welcomeMessage], env);
+    await sendReplyMessage(event.replyToken, [thanksMessage], env);
+
   } catch (err) {
-    if (!isProd) console.warn(`⚠️ ${eventType}の応答メッセージ送信失敗:`, err);
-    return new Response(eventType + " NG", { status: 400 });
+    if (!isProd) console.warn(`⚠️ ${eventType} で reply メッセージ送信失敗:`, err.message || err);
   }
 
+  // Supabase書き込み処理は行わない（userIdがnullのときがあるから）
 
-  // --- B. Supabase書き込み処理
-  if (userId) {
-    try {
-      const result = await saveUserProfileAndWrite(userId, groupId, eventType, env);
-      return result; // Response("OK" / "NG" / "SKIPPED")
-    } catch (err) {
-      if (!isProd) console.warn(`⚠️ ${eventType} Supabase書き込み例外:`, err);
-      return new Response(eventType + " NG", { status: 500 });
-    }
-  }
-
-  // userId がなかった場合も OK を返す
-  return new Response(eventType + " OK", { status: 200 });
 }
 
 

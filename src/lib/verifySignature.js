@@ -27,14 +27,6 @@ export async function verifySignature(request, channelSecret) {
   const computedSignature = toBase64(signatureBuffer);
 
   const isValid = signature === computedSignature;
-
-  // 比較ログ 終了時削除！！
-/**
-  console.warn("📛 比較ログ");
-  console.warn("📬 LINE署名     :", signature);
-  console.warn("🔑 生成署名     :", computedSignature);
-*/
-
   return { isValid, bodyText };
 }
 

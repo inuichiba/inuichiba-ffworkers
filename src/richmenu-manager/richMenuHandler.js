@@ -433,7 +433,7 @@ export async function lineUploadRichMenuImage(channelAccessToken, richMenuId, im
       return false;
     }
   } catch (error) {
-    console.error(`❌ fetch実行中に例外が発生しました: ${error.message || error}`);
+    console.error("❌ fetch実行中に例外が発生しました:", error.message || error);
     return false;
   }
 }

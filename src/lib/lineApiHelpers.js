@@ -20,7 +20,7 @@ export async function sendReplyMessage(replyToken, messages, env) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      if (!isProd) console.warn(`❌ LINEメッセージ送信失敗: ${response.status} - ${errorText}`);
+      if (!isProd) console.warn(`❌ LINEメッセージ送信失敗: ${response.status} - ${errorText || "(empty error)"}`);
     } else {
       if (!isProd) console.log("✅ LINEメッセージ送信成功");
     }

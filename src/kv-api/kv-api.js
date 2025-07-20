@@ -1,20 +1,22 @@
 // 📁 kv-api.js
 // Cloudflare Workers にデプロイする KV 操作用 API エンドポイント
 // POST リクエストで KV に del / put / all 操作を行う
-// Variables に KV_API_TOKEN_PROD|KV_API_TOKEN_DEV を登録しておくこと
+// Cloudflare Workers の Secret に KV_API_TOKEN_PROD|KV_API_TOKEN_DEV を登録しておくこと
 //
-//
-// 🔧 デプロイ方法(Windows)
-// cd D:\nasubi\inuichiba-ffworkers\src\kv-api
-// npx wrangler deploy --env ffprod --config wrangler.kvapi.toml
-// npx wrangler deploy --env ffdev  --config wrangler.kvapi.toml
-//
-// 🔧 デプロイ方法(Mac：Terminal.app つまりターミナルから)
-// cd /users/nasubi810/nasubi/inuichiba-ffworkers/src/kv-api とか？
-// cd ~/projecrName(nasubiとか？)/inuichiba-ffworkers/src/kv-api
-// npx wrangler deploy --env ffprod --config wrangler.kvapi.toml
-// npx wrangler deploy --env ffdev  --config wrangler.kvapi.toml
-//
+/**
+
+🔧 デプロイ方法(Windows)
+cd D:\nasubi\inuichiba-ffworkers\src\kv-api
+npx wrangler deploy --env ffprod --config wrangler.kvapi.toml
+npx wrangler deploy --env ffdev  --config wrangler.kvapi.toml
+
+🔧 デプロイ方法(Mac：Terminal.app つまりターミナルから)
+cd /users/nasubi810/nasubi/inuichiba-ffworkers/src/kv-api とか？
+cd ~/projecrName(nasubiとか？)/inuichiba-ffworkers/src/kv-api
+npx wrangler deploy --env ffprod --config wrangler.kvapi.toml
+npx wrangler deploy --env ffdev  --config wrangler.kvapi.toml
+
+*/
 //
 // 🔧 使用方法:
 // デプロイ先URL（例）: https://inuichiba-ffworkers-kvapi-ffprod.<your-worker-name>.workers.dev
@@ -33,30 +35,23 @@
 // でも「明示的な初期化」「壊れたときの再登録」「登録の失敗リカバリ」には all（delしてputする）
 //
 /**
+
 🍖 実行例(ffprodの例：Windows) ※.batを使用して、curl.exeを使用すること
-@echo off
-setlocal
-
-set TOKEN=XXXXXXXXXXXXXXXX
-
-curl.exe -X POST https://inuichiba-ffworkers-kvapi-ffprod.maltese-melody0655.workers.dev ^
-More?   -H "Content-Type: application/json" ^
-More?   -H "Authorization: Bearer %TOKEN%" ^
-More?   -d "{\"kind\":\"del\",\"userId\":\"U061b67a5098093dfcbae373c2e7db1ea\",\"groupId\":\"default\",\"ttl\":1000}"
+cd D:\nasubi\inuichiba-ffworkers\src\kv-api
+.\kvapi-curl-ffdev.bat
+.\kvapi-curl-ffprod.bat
 
 🍖 実行例(ffdevの例：Mac) ※ターミナルから実行
 🍖 初回だけ
+cd ~/nasubi/inuichiba-ffworkers/src/kv-api
 chmod +x kv-api-curl-ffdev.sh
+chmod +x kv-api-curl-ffprod.sh
 
 🍖 実行
-./curl-kvapi-ffdev.sh
+cd ~/nasubi/inuichiba-ffworkers/src/kv-api
+./kv-api-curl-ffdev.sh
+./kv-api-curl-ffprod.sh
 
-🍖 ファイルの中身
-#!/bin/bash
-curl -X POST https://inuichiba-ffworkers-kvapi-ffdev.nasubi810.workers.dev \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer XXXXXXXXXXXXX" \
-  -d '{"kind":"del","userId":"Uea8d4a145bff6700045c2b263927d844","groupId":"default","ttl":600}'
 */
 //
 // 🔧 参考

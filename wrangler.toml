@@ -39,7 +39,7 @@ name = "inuichiba-ffworkers-ffprod"
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffprod" }
 
 kv_namespaces = [
-  { binding = "users_kv_ffprod", id = "9cc8cd1153a34a66a4e1bf313078664c", preview_id = "4ebfa42f89f7478888677c5486b6b540" }
+  { binding = "ffprod_users_kv", id = "9cc8cd1153a34a66a4e1bf313078664c", preview_id = "4ebfa42f89f7478888677c5486b6b540" }
 ]
 
 
@@ -51,7 +51,7 @@ name = "inuichiba-ffworkers-ffdev"
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffdev" }
 
 kv_namespaces = [
-  { binding = "users_kv_ffdev", id = "4ebfa42f89f7478888677c5486b6b540", preview_id = "4ebfa42f89f7478888677c5486b6b540" }
+  { binding = "ffdev_users_kv", id = "4ebfa42f89f7478888677c5486b6b540", preview_id = "4ebfa42f89f7478888677c5486b6b540" }
 ]
 
 

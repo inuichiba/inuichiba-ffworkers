@@ -1,37 +1,26 @@
+// lib/sbWriter.js
 import { getEnv } from"./env.js";
 import { getFormattedJST } from "./saveUserInfo.js";
+import { addMonthCount } from "./kvUtils.js";
 
 /**
  * Supabase にユーザーデータを書き込む（Cloudflare対応）
  * @param {object} userData - ユーザーデータ
  * @param {object} env - 環境変数（supabaseUrl, supabaseKey を含む）
  */
-export async function writeUserDataToSupabase(userData, env) {
+export async function writeToSb(userData, env) {
   const { isProd, supabaseUrl, supabaseKey, usersTable, usersKV } = getEnv(env);
-
-  const {
-    timestamp,
-    groupId,
-    userId,
-    displayName,
-    pictureUrl,
-    statusMessage,
-    shopName,
-    inputData
-  } = userData;
-
+  const { timestamp, groupId, userId } = userData;
   // ユニークキーとして使う KV キー（例: "default_U061b67..."）
   const kvKey = `${groupId}_${userId}`;
 
   if (!isProd) {
-    // console.trace("📌 writeUserDataToSupabase() が呼ばれました(トレース)");
     console.log("🕐 Supabase 書き込み開始タイムスタンプ:", timestamp);
     console.log("📦 Supabase 書き込みデータ:", userData);
     console.log("🔑 KV キー:", kvKey);
   }
 
   try {
-
     // ✅ 1. KVに該当キーが存在するか確認（TTL内の書き込み済みかどうか）
     const existing = await usersKV.get(kvKey);
     if (existing) {
@@ -69,11 +58,11 @@ export async function writeUserDataToSupabase(userData, env) {
     if (isProd && Array.isArray(upsertResult) && upsertResult.length === 0) {
       // ffprodのことなので必ずコンソールに出力する
       console.warn("⚠️ Supabase重複により何も書き込まれなかった → KVを補完:", kvKey);
-      try {
-        await usersKV.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
-      } catch (kvErr) {
-        console.error("⚠️ KVへの再登録に失敗:", kvErr);
-      }
+      await usersKV.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
+
+      // ✅ 明示ログ追加
+      console.log("📌 Supabase空配列時の月次件数加算を実施します");
+      await addMonthCount(env);
       return { skipped: true };
     }
 
@@ -83,16 +72,15 @@ export async function writeUserDataToSupabase(userData, env) {
       if (upsertRes.status === 409 && isProd) {
         // このメッセージは出す方向で
         console.warn("⚠️ Supabaseに既存データがあり、KVは消失またはTTL切れでした:", kvKey);
-        try {
-          // KVに再保存して今後1年間スキップ対象にする
-          await usersKV.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
-        } catch (kvErr) {
-          console.error("⚠️ KVへの再登録に失敗:",  kvErr);
-          // 処理は続ける（止めない）
-        }
+
+        // KVに再保存して今後1年間スキップ対象にする
+        await usersKV.put(kvKey, "1", { expirationTtl: 60 * 60 * 24 * 365 });
+        await addMonthCount(env);
+
         // ✅ 重複があったが正常スキップとして処理
         return { skipped: true };
       }
+
       // ✅ 本当に失敗（本番409以外 or 開発環境）
       console.error("❌ Supabase 書き込み失敗:", {
         status: upsertRes.status,
@@ -104,11 +92,14 @@ export async function writeUserDataToSupabase(userData, env) {
 
     // ✅ 4. Supabase書き込み成功 → KVにも記録して次回以降スキップ
     const ttl = isProd ? 60 * 60 * 24 * 365 : 600; // 秒: 本番は1年、開発は600秒
+    await usersKV.put(kvKey, "1", { expirationTtl: ttl });
+    if (!isProd) console.log("📌 KVへの保存成功:", kvKey);
+
     try {
-      await usersKV.put(kvKey, "1", { expirationTtl: ttl });
-    } catch(kvErr) {
-      console.error("❌ Supabase 書き込みは成功したが、KV保存に失敗:", kvErr);
-      // 書き込みは成功してるので止めない
+      if (!isProd) console.log("📌 月次カウント加算処理を開始");
+      await addMonthCount(env);
+    } catch (err) {
+      if (!isProd) console.warn("⚠️ 月次カウント処理で例外:", err);
     }
 
     if (!isProd) {
@@ -120,9 +111,9 @@ export async function writeUserDataToSupabase(userData, env) {
 
   } catch (err) {
     // 💥 通信エラー・fetch失敗など
-    console.error("❌ Supabase の書き込み中か KV 処理中に例外が発生しました：", err.stack || err);
+    console.error("❌ Supabase の書き込み中に例外が発生しました：", err.stack || err);
     return { error: err };
   }
-
 }
+
 

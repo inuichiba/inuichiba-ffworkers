@@ -27,7 +27,7 @@ export function getEnv(env) {
 		supabaseUrl:        getConfigValue(env, isProd ? "SUPABASE_URL_FFPROD" : "SUPABASE_URL_FFDEV"),
 		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
 		baseDir:            "https://inuichiba-ffimages.pages.dev/",
-    usersKV:            isProd ? env.users_kv_ffprod : env.users_kv_ffdev,
+    usersKV:            isProd ? env.ffprod_users_kv : env.ffdev_users_kv,
     kvApiToken:         isProd ? env.KV_API_TOKEN_FFPROD : env.KV_API_TOKEN_FFDEV,
 	};
 
