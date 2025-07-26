@@ -1,7 +1,7 @@
 // lib/sbWriter.js
 import { getEnv } from"./env.js";
 import { getFormattedJST } from "./saveUserInfo.js";
-import { addMonthCount } from "./kvUtils.js";
+import { addMonthCount, getUTCDateString } from "./kvUtils.js";
 
 /**
  * Supabase にユーザーデータを書き込む（Cloudflare対応）
@@ -11,8 +11,10 @@ import { addMonthCount } from "./kvUtils.js";
 export async function writeToSb(userData, env) {
   const { isProd, supabaseUrl, supabaseKey, usersTable, usersKV } = getEnv(env);
   const { timestamp, groupId, userId } = userData;
-  // ユニークキーとして使う KV キー（例: "default_U061b67..."）
+  // ユーザー識別用の KV キー（例: "default_U061b67..."）
   const kvKey = `${groupId}_${userId}`;
+  // Supabase月次フラグ → supabase_flag:ffprod:2025-07 形式(日時はUTC)
+  const sbFlagKey = `supabase_flag:${isProd ? "ffprod" : "ffdev"}:${getUTCDateString().slice(0, 7)}`;
 
   if (!isProd) {
     console.log("🕐 Supabase 書き込み開始タイムスタンプ:", timestamp);
@@ -21,6 +23,13 @@ export async function writeToSb(userData, env) {
   }
 
   try {
+    // ✅ 0. Supabaseフラグを確認（書き込みが閾値を超えていたら書き込まずリターン）
+    const sbFlag = await usersKV.get(sbFlagKey);
+    if (sbFlag === "threshold") {
+      if (!isProd) console.warn("⚠️ Supabase月次書き込みフラグ threshold によりスキップ");
+      return { skipped: true };
+    }
+
     // ✅ 1. KVに該当キーが存在するか確認（TTL内の書き込み済みかどうか）
     const existing = await usersKV.get(kvKey);
     if (existing) {
@@ -36,7 +45,7 @@ export async function writeToSb(userData, env) {
       "Authorization": `Bearer ${supabaseKey}`,
       "Prefer": isProd
         ? "resolution=ignore-duplicates,return=representation" // 重複があったら Supabase 側が明確に「insertできたか、重複で無視されたか」を返す
-        : "resolution=merge-duplicates,return=representation", // 開発中は更新を許可
+        : "resolution=merge-duplicates,return=representation", // 開発環境は更新を許可
     };
 
     const body = JSON.stringify(userData);
@@ -51,10 +60,7 @@ export async function writeToSb(userData, env) {
     }
 
 
-    // ✅ 重複（＝何もinsertされてない）とみなせるレスポンスへの対応
-    // 409に限らず「レスポンスが空配列のとき」もスキップとしてKV補完する
-    // → そうしないと、永遠にSupabaseへ同一リクエストが送られ続けることになり、
-    //   将来的な課金リスクが継続するから
+    // ✅ 書き込み成功だがレスポンス空配列 → 重複とみなしてKV補完
     if (isProd && Array.isArray(upsertResult) && upsertResult.length === 0) {
       // ffprodのことなので必ずコンソールに出力する
       console.warn("⚠️ Supabase重複により何も書き込まれなかった → KVを補完:", kvKey);
@@ -66,7 +72,7 @@ export async function writeToSb(userData, env) {
       return { skipped: true };
     }
 
-    // ✅ 3. 書き込み失敗時（409やその他）
+    // ✅ 3. 書き込み失敗時（409や500など）
     if (!upsertRes.ok) {
       // ✅ 特別処理：409 Conflict（ユニークキー重複＝KV TTL切れ or Cloudflare障害）
       if (upsertRes.status === 409 && isProd) {

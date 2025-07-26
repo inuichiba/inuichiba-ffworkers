@@ -18,16 +18,17 @@ export function getEnv(env) {
 	// ✅ 本番判定（CLIバッチ or 通常）
 	const isProd = (projectId === "inuichiba-ffworkers-ffprod");
 
-	return {
+  return {
 		isProd,
 		projectId,
 		channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
 		channelSecret:      getConfigValue(env, isProd ? "CHANNEL_SECRET_FFPROD" : "CHANNEL_SECRET_FFDEV"),
 		supabaseKey:        getConfigValue(env, isProd ? "SUPABASE_SERVICE_ROLE_KEY_FFPROD" : "SUPABASE_SERVICE_ROLE_KEY_FFDEV"),
 		supabaseUrl:        getConfigValue(env, isProd ? "SUPABASE_URL_FFPROD" : "SUPABASE_URL_FFDEV"),
-		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
 		baseDir:            "https://inuichiba-ffimages.pages.dev/",
-    usersKV:            isProd ? env.ffprod_users_kv : env.ffdev_users_kv,
+		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
+    usersKV:            isProd ? env.usersKV_ffprod : env.usersKV_ffdev,
+    discordWebhookUrl:  getConfigValue(env, isProd ? "DISCORD_WEBHOOK_URL_FFPROD" : "DISCORD_WEBHOOK_URL_FFDEV"),
     kvApiToken:         isProd ? env.KV_API_TOKEN_FFPROD : env.KV_API_TOKEN_FFDEV,
 	};
 

@@ -160,6 +160,7 @@ const msgB72 = msgA72;
 const msgJoin = "こんにちは🐾 犬市場Botです🐶\nどうぞよろしくお願いします！";
 const msgY = "こんにちは🐕🐾\n投稿やライブを楽しみにしててね✨";
 const msgPostpone = "メッセージありがとうございます！\n申し訳ございませんが、こちらのアカウントでは個別のお問い合わせには対応しておりません。\nどうぞ次の配信をお待ちください。\n\nもしメニューをご覧いただけない場合は、左下の「≡」のマークをタップしていただくか、一度トーク画面を閉じて再度開いてください。";
+const msgCongested = "⚠️ ただいま処理が混み合っているため、一時的にご利用を制限しています。\n午前9時以降にもう一度お試しください。";
 // const msgTimeoutAppend = "タイムアウトを検知したためファイルへの書き込みに失敗しました。\nもう一度処理を行ってください。";
 // const lineQRtext = "友だち追加用のQRコードです。\nどうぞお使いください。";
 
@@ -249,7 +250,8 @@ return {
   msgB70,msgB71,msgB72,
   msgJoin,
   msgY,
-  msgPostpone
+  msgPostpone,
+  msgCongested
 };
 } // createMessages()の終了
 

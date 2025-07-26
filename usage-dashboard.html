@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>KV & Supabase 使用状況ダッシュボード</title>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; padding: 2em; }
+    h1 { margin-bottom: 1em; }
+    h2 { margin-top: 2em; border-bottom: 2px solid #ccc; }
+    .box {
+      background: #fff;
+      padding: 1em;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+      margin-bottom: 2em;
+    }
+    a { color: #0645ad; text-decoration: none; }
+    .warn { color: orange; font-weight: bold; }
+    .danger { color: red; font-weight: bold; }
+    code { background: #eee; padding: 2px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <h1>📊 KV & Supabase 使用状況ダッシュボード</h1>
+
+  <div class="box">
+    <h2>🔑 Supabase 月次書き込み回数</h2>
+    <p>各環境の <code>writeCount:YYYY-MM</code> を KV に保存済み。</p>
+    <ul>
+      <li>ffprod: <a href="https://dash.cloudflare.com/39914da7b7f259b59d901f0b57cc17cc/workers/kv/namespaces/9cc8cd1153a34a66a4e1bf313078664c" target="_blank">Cloudflare KV ダッシュボード (ffprod)</a></li>
+      <li>ffdev: <a href="https://dash.cloudflare.com/39914da7b7f259b59d901f0b57cc17cc/workers/kv/namespaces/4ebfa42f89f7478888677c5486b6b540" target="_blank">Cloudflare KV ダッシュボード (ffdev)</a></li>
+    </ul>
+    <p class="warn">上限: <strong>月 100,000 回</strong> を超えると Supabase に課金される可能性があります。</p>
+  </div>
+
+  <div class="box">
+    <h2>📦 Supabase 総レコード数</h2>
+    <p>現在、Supabase に登録されているユーザー数と一致します。1レコードあたり最大約1.5KBです。</p>
+    <p><strong>安全な目安：</strong> 最大 <strong>25万～30万件</strong> 程度（Supabase 無料プランの 500MB上限を考慮）</p>
+    <p class="danger">⚠️ 25万件を超えそうになったら対策を検討してください。</p>
+  </div>
+
+  <div class="box">
+    <h2>💾 KV 使用最大使用量</h2>
+    <ul>
+      <li>📖 Read: <code>100000</code> / 日</li>
+      <li>📝 Write: <code>1000</code> / 日</li>
+      <li>🗑️ Delete: <code>1000</code> / 日</li>
+      <li>📋 List: <code>1000</code> / 日</li>
+      <li>📦 Storage: <code>1 GB</code></li>
+    </ul>
+    <p>ffprod: <a href="https://dash.cloudflare.com/39914da7b7f259b59d901f0b57cc17cc/workers/kv/namespaces/9cc8cd1153a34a66a4e1bf313078664c/metrics" target="_blank">Cloudflare KV Namespace Dashboard (ffprod)</a></p>
+    <p>ffdev: <a href="https://dash.cloudflare.com/39914da7b7f259b59d901f0b57cc17cc/workers/kv/namespaces/4ebfa42f89f7478888677c5486b6b540/metrics" target="_blank">Cloudflare KV Namespace Dashboard (ffdev)</a></p>
+    <p class="warn">⚠️ どれかが 80% を超えたら対策を検討してください。</p>
+    <p class="warn">📌 ただし Cloudflare Dashboard に表示される Read/Write などの回数は <strong>月間合計</strong>です。</p>
+    <p class="warn">⚠️ 実際の課金判定は <strong>1日ごとの制限超過</strong>が基準です（Freeプランは 1日 1,000 Writeなど）</p>
+    <p class="warn">📌 Cloudflare Workers / KV の日次制限は、毎日 朝9:00（JST）にリセットされます。</p>
+    <p class="warn">⚠️ 朝9時前に前日までの内容をメモしましょう。</p>
+  </div>
+
+
+  <div class="box">
+    <h2>📘 備考</h2>
+    <ul>
+      <li>Supabase の書き込み数は KV に保存された値で確認します。</li>
+      <li>Cloudflare KV の各種使用量は Cloudflare Dash または API 経由で確認可能です。</li>
+      <li>将来的に自動取得にする場合は <code>kv-api.js</code> や <code>index.js</code> の拡張で対応可能です。</li>
+    </ul>
+  </div>
+
+</body>
+</html>

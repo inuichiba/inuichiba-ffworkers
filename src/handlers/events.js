@@ -1,8 +1,10 @@
 // handlers/events.js
 
-import { sendReplyMessage, getUserProfile } from"../lib/lineApiHelpers.js";
-import { createMessages } from"../richmenu-manager/data/messages.js";
+import { sendReplyMessage, getUserProfile } from "../lib/lineApiHelpers.js";
+import { isCongested } from "../lib/kvUtils.js";
+import { createMessages } from "../richmenu-manager/data/messages.js";
 import { getEnv } from "../lib/env.js";
+
 
 /**
  * LINEからのイベントをイベント内容によって振り分けて処理する
@@ -12,9 +14,25 @@ import { getEnv } from "../lib/env.js";
  * @param {object} env - 環境変数
  */
 export async function handleEvent(event, env) {
-
+  const { msgCongested } = createMessages(env);
   const { isProd } = getEnv(env);
 
+  // ✅ 最初に混雑チェック（KV日次フラグを読み込む）
+  // ✅ await は必要（非同期でKVアクセスあり）
+  // ⚠️ VSCode に騙されないで！
+  const congested = await isCongested(env);
+  if (congested) { // 混雑中(true)だったら混雑中メッセージを出力してリターン
+    try {
+      const message = [{ type: "text", text: msgCongested }];
+      await sendReplyMessage(event.replyToken, message, env);
+    } catch (err) {
+      if (!isProd) console.log(`⚠️ ${event.type} で reply メッセージ送信失敗:`, err);
+    }
+    return; // 混雑中なので他の処理はスキップ
+  }
+
+
+  // 通常処理
   switch (event.type) {
     case 'postback':
       await handlePostbackEvent(event, env);

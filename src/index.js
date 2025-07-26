@@ -1,15 +1,15 @@
 
-import { getEnv } from "./lib/env.js";
 import { handleEvent } from "./handlers/events.js"; // 🔧 各イベントごとの処理（Promiseを返す）
 import { saveUserInfo } from "./lib/saveUserInfo.js";
 import { verifySignature } from "./lib/verifySignature.js";
+import { incrementKVReadCount } from "./lib/kvUtils.js";
 import { onRequestPost as handleNotify } from './notify.js';
+import { getEnv } from "./lib/env.js";
 
 export default {
   async fetch(request, env, ctx) {
 		const { isProd, channelSecret } = getEnv(env);
-		const url = new URL(request.url);
-
+ 		const url = new URL(request.url);
 	  // ✅ /notify エンドポイントの処理（GitHub Actions用：ココ使うと課金されるよ）
     if (request.method === "POST" && url.pathname === "/notify") {
       return handleNotify({ request, env, ctx });
@@ -55,6 +55,9 @@ export default {
 		for (let i = 0; i < json.events.length; i++) {
   		const event = json.events[i];
   		try {
+        // ✅ 1イベントごとに日次件数を1回加算
+        await incrementKVReadCount(env);
+
         // 🔄 非同期で裏に処理を投げる（Supabase書き込みだけ時間がかかるので非同期）
         // ユーザーには返却処理ができた時点で返す。Supabase処理がおゎるまで待たない
         handleEvent(event, env);  // awaitなしで即返しOK
