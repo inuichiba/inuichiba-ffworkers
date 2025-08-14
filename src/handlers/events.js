@@ -169,30 +169,41 @@ async function handleFollowEvent(event, env) {
 
   // ✅ 1. ユーザープロフィール取得（awaitする）
   let profile = null;
-  profile = await getUserProfile(userId, env);
-  const displayName = profile?.displayName || null;
+  try {
+    profile = await getUserProfile(userId, env);
+  } catch (err) {
+    if (err.statusCode === 403) {
+      if (!isProd) console.warn(`⚠️ ユーザープロフィール取得で 403 userId=${userId}`, err);
+    } else {
+      console.error("❌ ユーザープロフィール取得エラー", err);
+    }
+  }
+
+  // 名前が取れなければ固定文章
+  const name = profile?.displayName || "お客様";
   const followText = textTemplates["msgFollow"];
 
-  const mBody = (displayName == null || displayName.includes("$"))
-    ? followText
-    : `${displayName}さん、${followText}`;
+  const mBody = (name.includes("$"))  ?  `お客様、${followText}`  :  `${name}さん、${followText}`;
 
 
   // ✅ 2. ウェルカムメッセージ作成
-  let message;
+  let msg;
   try {
-    message = buildEmojiMessage("msgFollow", env, mBody);
+    msg = buildEmojiMessage("msgFollow", env, mBody);
   } catch (error) {
     if (!isProd) console.log(`⚠️ ${eventType} 絵文字メッセージの構築失敗: ${error.message}`);
-    message = { type: "text", text: "エラーが発生しました。" };
+    const greetingMessage = "お客様、はじめまして！\nお友だち追加ありがとうございます！\nこのアカウントでは最新情報を定期的に配信して参ります。\n" +
+                            "どうぞお楽しみに！\n\nメニューが表示されない場合、いったんトーク画面を閉じて再度開いてくださいね！";
+    msg = { type: "text", text: greetingMessage };
   }
 
-  // ✅ 3. LINE返信を送る（await）後にDB処理が待ってるのでこの処理が終わるのを待ってからDB処理に行きたい
+  // ✅ 3. LINE返信を送る
   if (replyToken.length > 0) {
     try {
-      await sendReplyMessage(replyToken, [message], env);
+      await sendReplyMessage(replyToken, [msg], env);
+      if (!isProd) console.log("✅ ${eventType} で 挨拶メッセージ送信に成功しました。");
     } catch(err) {
-      if (!isProd) console.warn(`⚠️ ${eventType} で reply メッセージ送信に失敗しました:`, err);
+      if (!isProd) console.warn(`⚠️ ${eventType} で 挨拶(reply)メッセージ送信に失敗しました:`, err);
     };
 
   } else {
@@ -401,8 +412,9 @@ async function handleJoinEvent(event, env) {
   const replyToken = event && typeof event.replyToken === "string" ? event.replyToken : "";
   // ✅ 仲間に入れてくれてありがとうメッセージの送信
   if (replyToken.length > 0) {
+    const msg = [{ type: "text", text: msgJoin }];
     try {
-      await sendReplyMessage(replyToken, [msgJoin], env);
+      await sendReplyMessage(replyToken, msg, env);
     } catch(err) {
       if (!isProd) console.warn(`⚠️ ${eventType} で reply メッセージ送信に失敗しました:`, err);
     };

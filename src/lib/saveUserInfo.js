@@ -35,32 +35,36 @@ export async function saveUserInfo(event, env) {
     // また、null による displayName や pictureUrl などが undefined や
     //  "null" になって、誤ったデータが入る危険がある
     // LINEチャネル設定ミス可能性も有(アクセストークンのスコープにPROFILE権限がない)
-    // profileがnull のためスキップ
-		if (!isProd) console.warn(`⚠️ ユーザープロフィール情報の取得に失敗（null）: userId=${userId}, groupId=${groupId}, err=`,err);
-    return;
+    // ただし403は次回正常となる可能性があるのでconsole.warnにする
+    if (err.statusCode === 403) {
+      if (!isProd) console.warn(`⚠️ ユーザープロフィール取得で 403 userId=${userId}`);
+    } else {
+      console.error(`❌ ユーザープロフィール取得エラー：userId=${userId}, groupId=${groupId}, err=`, err);
+    }
   }
 
-  const displayName   = profile?.displayName   || null;
-  const pictureUrl    = profile?.pictureUrl    || null;
-  const statusMessage = profile?.statusMessage || null;
-  const timestamp = getFormattedJST();
-  const shopName  = null;  // inputData とともに将来機能のため現在は null を送信
-  const inputData = null;
+  // profile=nullなら情報を取得できてない
+  if (!profile) {
+    if (!isProd) console.warn(`⚠️ プロフィールが取得できなかったため Supabase 書き込みスキップ userId=${userId}, groupId=${groupId}`);
+    return; // Supabaseに書き込まない
+  }
+
+  // supabaseに渡すデータ
+  const data = {
+    timestamp:      getFormattedJST(),
+    groupId,
+    userId,
+    displayName:    profile.displayName,
+    pictureUrl:     profile.pictureUrl,
+    statusMessage:  profile.statusMessage,
+    shopName:   null,  // inputData とともに将来機能のため現在は null を送信
+    inputData:  null
+  };
 
   try {
     // 📤 Supabase + KV 書き込み処理
     // awaitは内部でOK（ctx.waitUntil() で投げられてるのでイベント処理には影響なし）
-    const res = await writeToSb({
-      timestamp,
-      groupId,
-      userId,
-      displayName,
-      pictureUrl,
-      statusMessage,
-      shopName,
-      inputData
-    }, env);
-
+    const res = await writeToSb(data, env);
     if (!isProd) console.log(`📄 ${event.type} イベントの Supabase 書き込み結果:`, res);
 
   } catch (err) {

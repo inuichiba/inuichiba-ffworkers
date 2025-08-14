@@ -73,11 +73,11 @@ export async function addMonthCount(env) {
     if (!isProd) console.log(`📈 KVのSupabase月次件数 取得: 件数=${current}, monthKey=${monthKey}`);
 
     const newCount = current + 1;
+    const TTL92 = 60 * 60 * 24 * 92;
 
     if (isProd) {
       await putKV(usersKV, monthKey, newCount.toString(), 0, env);  // ffprodは永続保存
     } else {
-      const TTL92 = 60 * 60 * 24 * 92;
       await putKV(usersKV, monthKey, newCount.toString(), TTL92, env);  // ffdevは3ヶ月（92日間）保存
       if (!isProd) console.log(`🔄 KVのSupabase月次件数 加算: 件数=${newCount}, monthKey=${monthKey}`);
     }
@@ -102,7 +102,6 @@ export async function addMonthCount(env) {
           console.error("supabase90% 通常到達：フラグ更新時に Discord 送信エラー", e.message);
         }
 
-        const TTL92 = 60 * 60 * 24 * 92;
         const tasks = [
           putKV(usersKV, sbFlagKey, "threshold", TTL92, env),  // 3ヶ月(92日間)保存
         ];
@@ -190,7 +189,6 @@ export async function incrementKVReadCount(env) {
             console.error("kv100% 通常到達：フラグ更新時に Discord 送信エラー", e.message);
           }
 
-          const TTL3 = 60 * 60 * 24 * 3;
           const tasks = [
             putKV(usersKV, notifyFlag100, KV_SENTINEL, TTL3, env),
             putKV(usersKV, notifyFlag90,  KV_SENTINEL, TTL3, env),
@@ -211,8 +209,14 @@ export async function incrementKVReadCount(env) {
 
         } else if (typeof flagSet !== "string") {
           // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
-          const TTL3 = 60 * 60 * 24 * 3;
-          await putKV(usersKV, kvFlag, "threshold", TTL3, env)
+          try {
+            // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
+            await putKV(usersKV, kvFlag, "threshold", TTL3, env)
+            if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
+          } catch (e) {
+            if (!isProd) console.warn("⚠️ Discord通知後のkvFlag補完に失敗しました", e);
+          }
+
           if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
         }
 
@@ -248,7 +252,6 @@ export async function incrementKVReadCount(env) {
             console.error("kv90% 通常到達：フラグ更新時に Discord 送信エラー", e.message);
           }
 
-          const TTL3 = 60 * 60 * 24 * 3;
           const tasks = [
             putKV(usersKV, notifyFlag90, KV_SENTINEL, TTL3, env),
             putKV(usersKV, notifyFlag80, KV_SENTINEL, TTL3, env),
@@ -267,8 +270,14 @@ export async function incrementKVReadCount(env) {
 
         } else if (typeof flagSet !== "string") {
           // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
-          const TTL3 = 60 * 60 * 24 * 3;
-          await putKV(usersKV, kvFlag, "threshold", TTL3, env);
+          try {
+            // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
+            await putKV(usersKV, kvFlag, "threshold", TTL3, env);
+            if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
+          } catch (e) {
+            if (!isProd) console.warn("⚠️ Discord通知後のkvFlag補完に失敗しました", e);
+          }
+
           if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
         }
 
@@ -292,9 +301,8 @@ export async function incrementKVReadCount(env) {
           console.error(`🚨 ${isProd ? "ffdev" : "ffprod"}へ"kv80"を入力して、警戒フェーズに合わせてください。`);
           console.error(`🚨 LINE Official Managerの「応答メッセージ」設定にあるQRコードメッセージの「利用」スイッチを、手動で「OFF」にしてください。`);
 
-          const message = `🚨 ${isProd ? "ffprod" : "ffdev"}のKV日次件数が80%を超過しました！\n` +
+          const message = `🚨 ${isProd ? "ffprod" : "ffdev"}のKV日次件数が80%を超過しました！ → 警戒フェーズを開始します。\n` +
                 `📈 ${isProd ? "ffprod" : "ffdev"}件数=${newCount}  🗝️ todayKey=${todayKey}\n` +
-                `📈 Cloudflare Workers混雑モードを開始します。\n` +
                 `📈 ${isProd ? "ffdev" : "ffprod"}へ"kv80"を入力して、警戒フェーズに合わせてください。\n` +
                 `📈 LINE Official Managerの「応答メッセージ」設定にあるQRコードメッセージの「利用」スイッチを、手動で「OFF」にしてください。\n` +
                 `📈 KV日次件数(read)は、ffprodとffdevの合算でUTC時間で一日単位で課金を計算されます(日本時間で朝9時頃クリアされます)。\n` +
@@ -306,7 +314,6 @@ export async function incrementKVReadCount(env) {
             console.error("kv80% 通常到達：フラグ更新時に Discord 送信エラー", e.message);
           }
 
-          const TTL3 = 60 * 60 * 24 * 3;
           const tasks = [
             putKV(usersKV, notifyFlag80, KV_SENTINEL, TTL3, env),
             putKV(usersKV, kvFlag,       "threshold", TTL3, env),
@@ -323,7 +330,14 @@ export async function incrementKVReadCount(env) {
 
         } else if (typeof flagSet !== "string") {
           // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
-          await putKV(usersKV, kvFlag, "threshold", TTL3, env);
+          try {
+            // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
+            await putKV(usersKV, kvFlag, "threshold", TTL3, env);
+            if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
+          } catch (e) {
+            if (!isProd) console.warn("⚠️ Discord通知後のkvFlag補完に失敗しました", e);
+          }
+
           if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
         }
 
@@ -417,7 +431,7 @@ export async function setFlagKVSB(env, data) {
 
         }
 
-        if (!isProd) console.log("🏁 コマンド処理 → Discord通知(sb90)とフラグ削除処理を完了しました");
+        if (!isProd) console.log("🏁 コマンド処理 → Discord通知(sb90)とフラグ更新処理を完了しました");
 
       } catch(err) {
         if (!isProd) console.warn(`⚠️ KVのSupabase月次件数 or しきい値 更新失敗: monthKey=${monthKey}`, err);
@@ -442,9 +456,10 @@ export async function setFlagKVSB(env, data) {
 
     // ✅ "kvdel"(緊急フェーズなどなどで立てた緊急KVキーを削除し、通常フェーズに戻る)
     if (data === "kvdel") {
+      const notified = await usersKV.get(kvFlag);
       try {
-        if (typeof notified !== "string") {
-          // ✅ 通知していない → 通知＋フラグ3つまとめて立てる
+        if (typeof notified === "string") {
+          // まだDiscord通知してない → 通知してフラグ全部消す
           console.warn(`🚨 ${isProd ? "ffprod": "ffdev"}にKV日次件数、KVフラグの値をクリアするコマンドが入力されました。`);
           console.error(`🚨 ${isProd ? "ffprod": "ffdev"}のLINE Official Managerの「応答メッセージ」設定にあるQRコードメッセージの「利用」スイッチを、手動で「ON」に 戻してください。`);
           console.error(`🚨 ${isProd ? "ffdev" : "ffprod"}にも"kvdel"を入力して同じ状態にしてください。`);
@@ -454,17 +469,12 @@ export async function setFlagKVSB(env, data) {
                 `🧯 ${isProd ? "ffprod" : "ffdev"}のLINE Official Managerの「応答メッセージ」設定にあるQRコードメッセージの「利用」スイッチを、手動で「ON」に 戻してください。\n` +
                 `🧯 ${isProd ? "ffdev" : "ffprod"}にも"kvdel"を入力して同じ状態にするようご検討ください。\n`;
 
-          // 同じキーに登録できるのは1秒に一度まで。
-          // todayKeyは設定されないとヤバイので、直列で実施
-          const TTL3 = 60 * 60 * 24 * 3;
-          await putKV(usersKV, todayKey, "0", TTL3, env); // 3日間保存
-
           // tasksに入れられるのはdelKV/putKVのみ
           // Discord通知は通常通り直列処理で実施
           try {
             await notifyDiscord(env, message);
           } catch(e) {
-            console.error("kvdel コマンド受付：フラグ削除時に Discord 送信エラー", e.message);
+            console.error("kvdel コマンド受付：Discord 送信エラー", e.message);
           }
 
           // その後に並列でOKなものを流す
@@ -473,29 +483,22 @@ export async function setFlagKVSB(env, data) {
             delKV(usersKV, notifyFlag80,  env),
             delKV(usersKV, notifyFlag90,  env),
             delKV(usersKV, notifyFlag100, env),
+            putKV(usersKV, todayKey, "0", TTL3, env),   // 3日間保存
           ];
           const labels = [
             "kvFlag",
             "notifyFlag80",
             "notifyFlag90",
             "notifyFlag100",
+            "todayKey",
           ];
           await runKvBatch("kvdel フラグ削除", tasks, labels, env, notifyDiscord);
 
-          if (!isProd) console.log("🗑️ KVフラグ類を削除しました");
+          if (!isProd) console.log("🗑️ KVフラグ類を削除し、KV日次件数をクリアしました");
 
-
-        } else if (typeof flagSet !== "string") {
-          try {
-            // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
-            await putKV(usersKV, kvFlag, "threshold", TTL3, env)
-            if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
-          } catch (e) {
-            if (!isProd) console.warn("⚠️ Discord通知後のkvFlag補完に失敗しました", e);
-          }
         }
 
-        if (!isProd) console.log("🏁 コマンド処理 → Discord通知(kvdel)とフラグ削除処理を完了しました");
+        if (!isProd) console.log("🏁 コマンド処理 → Discord通知(kvdel)とフラグ削除、KV日次件数のクリアを完了しました");
 
       } catch (e) {
         console.error("❌ kvdel通知エラー:", e);
@@ -516,8 +519,12 @@ export async function setFlagKVSB(env, data) {
         usersKV.get(kvFlag)
       ]);
       try {
+        // notified = Discord通知を送ったことを記録するフラグ。
+        // notifyFlag100の値を見ていて、100%になったらDiscord通知するが、一度送ったら二度は送らないために立てるフラグ。
+        // 値は"1"など文字列なら送信済と判断。nullなら送信未と判断。
         if (typeof notified !== "string") {
-          // ✅ 通知していない → 通知＋フラグ3つまとめて立てる
+          // 通知フラグが文字列じゃない（nullなど）＝まだDiscord通知していない
+          // Discord通知を送って notifyFlag100 などにフラグを書き込む
           console.warn(`🚨 ${isProd ? "ffprod" : "ffdev"}でKV日次件数が100%を超過するコマンドが入力されました → 課金フェーズに入ります`);
           console.error(`🚨 ${isProd ? "ffdev" : "ffprod"}も同じ状態になるよう"kv100"を入力してください。`);
 
@@ -537,7 +544,6 @@ export async function setFlagKVSB(env, data) {
           // 全部「同時に」実行(単なるawaitと違って超高速になる)
           // 全部のPromiseの「結果」（成功・失敗）をすべて待つ
           // 失敗したものも含めて「全件終わるまで」進まない
-          const TTL3 = 60 * 60 * 24 * 3;
           const tasks = [
             putKV(usersKV, kvFlag,        "threshold", TTL3, env),
             putKV(usersKV, notifyFlag80,  KV_SENTINEL, TTL3, env),
@@ -553,9 +559,10 @@ export async function setFlagKVSB(env, data) {
           await runKvBatch("kv100 フラグ更新", tasks, labels, env, notifyDiscord);
 
 
+        // flagSet が string じゃない → KVに混雑フラグが無い → まだ混雑フラグを立てていない
+        // 「通知はしたけど混雑モードフラグを立て忘れた」場合の救済処理
         } else if (typeof flagSet !== "string") {
           try {
-            // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
             await putKV(usersKV, kvFlag, "threshold", TTL3, env)
             if (!isProd) console.warn("⚠️ Discord通知済みだがkvFlag未設定 → 補完しました");
           } catch (e) {
@@ -580,7 +587,7 @@ export async function setFlagKVSB(env, data) {
       ]);
       try {
         if (typeof notified !== "string") {
-          // ✅ 通知していない → 通知＋フラグ3つまとめて立てる
+          // ✅ 通知していない → 通知＋フラグまとめて立てる
           console.warn(`🚨 ${isProd ? "ffprod" : "ffdev"}でKV日次件数が90%を超えるコマンドが入力されました → 緊急フェーズに入ります`);
           console.error(`🚨 ${isProd ? "ffdev" : "ffprod"}も同じ状態になるよう"kv90"を入力してください。`);
 
@@ -596,7 +603,6 @@ export async function setFlagKVSB(env, data) {
             console.error("kv90 コマンド受付：フラグ更新時に Discord 送信エラー", e.message);
           }
 
-          const TTL3 = 60 * 60 * 24 * 3;
           const tasks = [
             putKV(usersKV, kvFlag,       "threshold", TTL3, env),
             putKV(usersKV, notifyFlag80, KV_SENTINEL, TTL3, env),
@@ -610,6 +616,8 @@ export async function setFlagKVSB(env, data) {
           await runKvBatch("kv90 フラグ更新", tasks, labels, env, notifyDiscord);
 
 
+        // flagSet が string じゃない → KVに混雑フラグが無い → まだ混雑フラグを立てていない
+        // 「通知はしたけど混雑モードフラグを立て忘れた」場合の救済処理
         } else if (typeof flagSet !== "string") {
           try {
             // ✅ 通知済みだけどフラグだけ未設定 → フラグ補完
@@ -654,7 +662,6 @@ export async function setFlagKVSB(env, data) {
             console.error("kv80 コマンド受付：フラグ更新時に Discord 送信エラー", e.message);
           }
 
-          const TTL3 = 60 * 60 * 24 * 3;
           const tasks = [
             putKV(usersKV, kvFlag,       "threshold", TTL3, env),
             putKV(usersKV, notifyFlag80, KV_SENTINEL, TTL3, env)
@@ -664,6 +671,7 @@ export async function setFlagKVSB(env, data) {
             "notifyFlag80"
           ];
           await runKvBatch("kv80 フラグ更新", tasks, labels, env, notifyDiscord);
+
 
         } else if (typeof flagSet !== "string") {
           try {
@@ -945,7 +953,7 @@ export async function notifyDiscord(env, message, label = null) {
 
   const utc = getUTCTimestamp();
   const jst = getFormattedJST();
-  const fullMessage = `${title}\n🕒 UTC: ${utc}   🕘 JST: ${jst}\n\n${message}\n\n`;
+  const fullMessage = `${title}\n🕒 UTC: ${utc}   🕘 JST: ${jst}\n${message}\n\n`;
 
   try {
     const payload = { content: fullMessage };
