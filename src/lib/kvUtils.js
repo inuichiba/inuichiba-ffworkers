@@ -451,7 +451,7 @@ export async function setFlagKVSB(env, data) {
 
           const message = `🚨 ${isProd ? "ffprod" : "ffdev"}にKV日次件数、KVフラグの値をクリアするコマンドが入力されました。\n` +
                 `🧯 ${isProd ? "ffprod" : "ffdev"}件数=${newCount} から0へ変更されました 🗝️ todayKey=${todayKey}\n` +
-                `🚨 ${isProd ? "ffprod" : "ffdev"}のLINE Official Managerの「応答メッセージ」設定にあるQRコードメッセージの「利用」スイッチを、手動で「ON」に 戻してください。\n` +
+                `🧯 ${isProd ? "ffprod" : "ffdev"}のLINE Official Managerの「応答メッセージ」設定にあるQRコードメッセージの「利用」スイッチを、手動で「ON」に 戻してください。\n` +
                 `🧯 ${isProd ? "ffdev" : "ffprod"}にも"kvdel"を入力して同じ状態にするようご検討ください。\n`;
 
           // 同じキーに登録できるのは1秒に一度まで。
