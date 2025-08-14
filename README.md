@@ -135,3 +135,63 @@ src/lib/env.js                          # 主に参照。isProd(ffdev/ffprodの�
 - Cloudflare ダッシュボード → Storage & Database → KV → 対象のNamespace → KV Pairs
 - キー形式は groupId_userId です（例: default_Uxxxxxxxxxxxx）
 - 💡 Supabaseだけ削除しても不完全です。KV側の削除を忘れずに！
+
+---
+
+## 使用制限について（KV / Supabase）
+
+```markdown
+このプロジェクトでは、Cloudflare Workers の KVストアおよび Supabase を利用していますが、**無課金枠をできるだけ超えないよう使用制限を設けています。**閾値を超えると一部の機能が自動的に制限されます
+ただしこれら以外にも無課金枠はあるため、*`inuichiba-ffworkers/usage-dashboard.html`* を**毎日チェックしてください**
+
+```
+
+### 🔐 使用しているKVキーの種類と用途
+
+```markdown
+キー名フォーマット（※1）         用途                                      TTL（※2）
+groupId_userId                  ユーザーデータのSupabaseアクセススキップ時間 ffdev:10分/ffprod:永続
+writeCount:ffprod:YYYY-MM       Supabase月次件数（Supabaseアクセス）       ffdev:3ヶ月/ffprod:永続     
+readCount:ffprod:YYYY-MM-DD     KV日次件数（Cloudflare Workers読み込み）   3日     
+supabase_flag:ffprod:YYYY-MM-DD Supabase月次フラグ                        3ヶ月  
+kv_flag:ffprod:YYYY-MM-DD       KV日次フラグ                              3日  
+
+※1：ffprod/ffdevは自動判定されます
+※2：TTL（Time To Live）とは、自動削除までの保存時間を意味し、秒単位で指定されます
+```
+- KVキーは *`inuichiba-ffworkers/usage-dashboard.html`* から参照することができます
+
+### 📈 KV日次件数（Cloudflare Workers読み込み）
+
+- 閾値: 80,000 件 / 日（Cloudflare無課金枠は 100,000件 / 日）
+- 超過時の動作:
+  - kv_flag:... に threshold を保存（TTL付き）
+  - ユーザーのメニュータップなどの動作は止められないため、**閾値を超えても件数は増え続けます**
+  - ユーザーには次の応答メッセージのみ返します：
+```markdown
+*⚠️ ただいま処理が混み合っているため、一時的にご利用を制限しています。*
+*午前9時以降にもう一度お試しください。*
+```
+- **リセット時刻:毎日 午前9時**（JST）（公式にはないが、多分UTC 0:00 に自動リセット）
+- **上限超過時の挙動:** エラーにはならず、**超過分は課金対象になる可能性**があります
+
+### 📝 Supabase月次件数（Supabaseアクセス）
+
+- 閾値: 100,000 件 / 月（無課金枠）
+- カウント対象: KVキー writeCount:... による記録
+- 超過時の動作:
+  - supabase_flag:... に threshold を保存（TTL付き）
+  - Supabase、KVキーへの読み取り/書き込みを**完全にスキップ**
+
+### 🔍 閾値チェックのタイミング
+
+- kv_flag の確認は **イベント処理前**（メニュータップ時など）:*lib/events.js*
+- supabase_flag の確認は **Supabaseへのチェック（書き込み/読み込み）直前**：*lib/sbWriter.js*
+- KVキーの作成など：*lib/kvUtils.js*
+
+### 💬 通知・フラグ仕様
+
+- 閾値を超えた場合：KV日時件数は80,000件/日、Supabase月次件数は90,000件/月になったら**Discord通知**されます
+- 各フラグには threshold という値が保存され、**Supabase は3ヶ月後、Cloudflare読み込みは 3日後**に自動削除されます
+- 再び利用可能になるのは、**Clopudflare読み込み: 翌朝9時 / Supabase: 月が変わってから**です。
+

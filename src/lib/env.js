@@ -21,17 +21,41 @@ export function getEnv(env) {
   return {
 		isProd,
 		projectId,
+
+    // --- LINE BOT ---
 		channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
 		channelSecret:      getConfigValue(env, isProd ? "CHANNEL_SECRET_FFPROD" : "CHANNEL_SECRET_FFDEV"),
-		supabaseKey:        getConfigValue(env, isProd ? "SUPABASE_SERVICE_ROLE_KEY_FFPROD" : "SUPABASE_SERVICE_ROLE_KEY_FFDEV"),
-		supabaseUrl:        getConfigValue(env, isProd ? "SUPABASE_URL_FFPROD" : "SUPABASE_URL_FFDEV"),
-		baseDir:            "https://inuichiba-ffimages.pages.dev/",
-		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
-    usersKV:            isProd ? env.usersKV_ffprod : env.usersKV_ffdev,
-    discordWebhookUrl:  getConfigValue(env, isProd ? "DISCORD_WEBHOOK_URL_FFPROD" : "DISCORD_WEBHOOK_URL_FFDEV"),
-    kvApiToken:         isProd ? env.KV_API_TOKEN_FFPROD : env.KV_API_TOKEN_FFDEV,
-	};
 
+    // --- Supabase ---
+    supabaseKey:        getConfigValue(env, isProd ? "SUPABASE_SERVICE_ROLE_KEY_FFPROD" : "SUPABASE_SERVICE_ROLE_KEY_FFDEV"),
+		supabaseUrl:        getConfigValue(env, isProd ? "SUPABASE_URL_FFPROD" : "SUPABASE_URL_FFDEV"),
+		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
+
+    // --- Discord通知 ---
+    discordWebhookUrl:  getConfigValue(env, isProd ? "DISCORD_WEBHOOK_URL_FFPROD" : "DISCORD_WEBHOOK_URL_FFDEV"),
+
+    // --- LINE通知 ---
+    adminUserIds:       isProd ? ["ADMIN_USER_ID_FFPROD"] : ["ADMIN_USER_ID_FFDEV"],
+
+    // --- 通知API用URL ---
+    workersNotifyUrl:   getConfigValue(env, isProd ? "WORKERS_NOTIFY_URL_FFPROD" : "WORKERS_NOTIFY_URL_FFDEV"),
+
+    // --- 通知API用トークン(/notify) ---
+    notifyApiToken:     getConfigValue(env, isProd ? "NOTIFY_API_TOKEN_FFPROD" : "NOTIFY_API_TOKEN_FFDEV"),
+    remoteNotifyApiToken: getConfigValue(env, isProd ? "REMOTE_NOTIFY_API_TOKEN_FFPROD" : "REMOTE_NOTIFY_API_TOKEN_FFDEV"),
+
+    // --- Cloudflare管理用 ---
+    cfApiToken:         getConfigValue(env, isProd ? "CF_API_TOKEN_FFPROD" : "CF_API_TOKEN_FFDEV"),
+
+    // --- KV Binding (Workers用) ---
+    usersKV:            isProd ? env.usersKV_ffprod : env.usersKV_ffdev,
+
+    // --- KV管理API用認証トークン（kv-api.js専用）---
+    kvApiToken:         getConfigValue(env, isProd ? "KV_API_TOKEN_FFPROD" : "KV_API_TOKEN_FFDEV"),
+
+    // --- ffimagesディレクトリ ---
+    baseDir:            "https://inuichiba-ffimages.pages.dev/",
+	};
 }		// getEnvの終わり
 
 // =======================================
@@ -147,4 +171,51 @@ export function getEnvInfo(env) {
   	console.log("📦 Supabase Table(usersTable)", usersTable);
 	};
 
+/**
+// =======================================
+// ✅ Cloudflasre Workers & GitHub Actions 向け 環境変数定義ファイル
+// ---------------------------------------
+// 💡 現在未使用
+// ---------------------------------------
 
+export function getEnv(env) {
+
+  // 環境変数をenv.XXXXと読むのは、Wrangler が env を引数として fetch() に渡してくれるため、
+  // その中にある環境変数が唯一の参照方法
+	const projectId = env.GCLOUD_PROJECT || process.env.GCLOUD_PROJECT || "";
+
+	// ✅ 本番判定（CLIバッチ or 通常）
+	const isProd = (projectId === "inuichiba-ffworkers-ffprod");
+
+  // env.XXX → process.env.XXX の順に取得（どちらでも動く）
+  function get(name) {
+    return env?.[name] || process?.env?.[name] || "";
+  }
+
+  return {
+		isProd,
+		projectId,
+
+    // --- LINE BOT ---
+		channelAccessToken: getConfigValue(env, isProd ? "CHANNEL_ACCESS_TOKEN_FFPROD" : "CHANNEL_ACCESS_TOKEN_FFDEV"),
+		channelSecret:      getConfigValue(env, isProd ? "CHANNEL_SECRET_FFPROD" : "CHANNEL_SECRET_FFDEV"),
+
+    // --- Supabase ---
+    supabaseKey:        getConfigValue(env, isProd ? "SUPABASE_SERVICE_ROLE_KEY_FFPROD" : "SUPABASE_SERVICE_ROLE_KEY_FFDEV"),
+		supabaseUrl:        getConfigValue(env, isProd ? "SUPABASE_URL_FFPROD" : "SUPABASE_URL_FFDEV"),
+		usersTable:         isProd ? "users_ffprod" : "users_ffdev",
+
+    // --- KV 関連（Workers用: binding、GitHub Actions用: 使わない） ---
+    usersKV:            isProd ? env.usersKV_ffprod : env.usersKV_ffdev,
+
+    // --- KVネームスペースID（GitHub Actions専用）---
+    discordWebhookUrl:  getConfigValue(env, isProd ? "DISCORD_WEBHOOK_URL_FFPROD" : "DISCORD_WEBHOOK_URL_FFDEV"),
+
+    // --- KV API token（GitHub Actions / Workers共通）---
+    kvApiToken:         getConfigValue(env, isProd ? "KV_API_TOKEN_FFPROD" : "KV_API_TOKEN_FFDEV"),
+
+    // --- その他 ---
+    baseDir:            "https://inuichiba-ffimages.pages.dev/",
+	};
+}		// getEnvの終わり
+*/

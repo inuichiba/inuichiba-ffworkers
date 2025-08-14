@@ -20,6 +20,7 @@ workers_dev = true
 # 使う場合は明示的に互換設定が必要
 compatibility_flags = ["nodejs_compat"]
 
+
 # 🌍 通常は Workers.dev を使用（routes や zones は省略）
 # route = ""
 # zone_id = ""

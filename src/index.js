@@ -6,28 +6,41 @@ import { incrementKVReadCount } from "./lib/kvUtils.js";
 import { onRequestPost as handleNotify } from './notify.js';
 import { getEnv } from "./lib/env.js";
 
+
 export default {
   async fetch(request, env, ctx) {
+    const { isProd } = getEnv(env);
+
+    // URL情報を取得
+    const url = new URL(request.url);
+    // HTTPメソッドとパスをまとめたルート名を作成
+    var route = request.method + " " + url.pathname;
+
+    // ここからAPIの分岐！
+    switch (route) {
+      case "POST /":  // ← ここが「LINEのWebhook」受信用
+        return handleWebhook(request, env, ctx);
+
+      case "POST /notify":
+        // /notify エンドポイント（GitHub Actions用：ココ使うと課金されるよ）
+        return handleNotify({ request, env, ctx });
+
+      case "GET /":
+        // ヘルスチェック（GETだけOK）
+        if (!isProd) console.log("📶 Webhook Healthcheck に応答");
+        return new Response("Webhook is alive", { status: 200 });
+
+      default:
+        // それ以外（該当なし）は404エラーで返す
+        return new Response("Not found", { status: 404 });
+    }
+  }
+};
+
+
+// LINEのWEBHOOKの処理
+async function handleWebhook(request, env, ctx) {
 		const { isProd, channelSecret } = getEnv(env);
- 		const url = new URL(request.url);
-	  // ✅ /notify エンドポイントの処理（GitHub Actions用：ココ使うと課金されるよ）
-    if (request.method === "POST" && url.pathname === "/notify") {
-      return handleNotify({ request, env, ctx });
-    }
-
-	  // ✅ Webhookの GETリクエストはヘルスチェックとして返答
-    // 要するに「元気？生きてる？」って聞きたくなる時あるよね？
-    // そう聞いたら「元気だよ」って答えるときの処理
-    // だからそれ以上の処理はやらない
-    if (request.method === "GET") {
-      if (!isProd) console.log("📶 Webhook Healthcheck に応答");
-      return new Response("Webhook is alive", { status: 200 });
-    }
-
-    // ✅ その他のメソッド（PUTなど）は拒否
-	  if (request.method !== "POST") {
-      return new Response("Method Not Allowed", { status: 405 });
-    }
 
     // 自作ミドルウェアでLINEの署名検証（Cloudflare版は自前実装または簡略化が必要）
     // （不正なリクエストは拒否）
@@ -51,22 +64,28 @@ export default {
   		return new Response("Invalid event format", { status: 400 });
 		}
 
-    // ✅ 各イベントを非同期に裏で実行（ctx.waitUntil）
+    // ✅ 各イベントを非同期に実行（裏で投げる）
 		for (let i = 0; i < json.events.length; i++) {
   		const event = json.events[i];
   		try {
-        // ✅ 1イベントごとに日次件数を1回加算
-        await incrementKVReadCount(env);
+        // 1. 計測に関係するカウントは裏へ(1イベントごとに日次件数を1回加算)
+        ctx.waitUntil(incrementKVReadCount(env).catch(function (err) {
+          if (!isProd) console.warn("KV日次フラグON/Discord通知処理エラー:", err);
+        }));
 
-        // 🔄 非同期で裏に処理を投げる（Supabase書き込みだけ時間がかかるので非同期）
-        // ユーザーには返却処理ができた時点で返す。Supabase処理がおゎるまで待たない
-        handleEvent(event, env);  // awaitなしで即返しOK
+        // 2. 返信を含む処理はここだけ await（reply を確実に終わらせる）
+        await handleEvent(event, env, ctx);
 
+        // 3. 重い保存系は裏へ
         // 対象イベントのみ Supabase + KV に保存（裏で非同期処理）
         const types = ['postback', 'follow', 'message'];  // Supabase,KV書き込み対象イベント
         if (types.includes(event.type)) {                 // イベントの種類がtypesと同じだったら
-          ctx.waitUntil(saveUserInfo(event, env));        // 非同期処理を裏に投げる
+          // 非同期処理を裏に投げる
+          ctx.waitUntil(saveUserInfo(event, env).catch(function (err) {
+            if (!isProd) console.warn(`${event.type} eventでSupabaseアクセスエラー:`, err);
+          }));
         }
+
   		} catch (err) {
     		console.error("❌ handleEvent エラー:", err);
         // ここでエラーを返すと他のイベント処理が止まるので無視して続行
@@ -79,5 +98,5 @@ export default {
     // 非同期にしたから処理自体はいつもOK(詳細な結果はコンソールログに出る）
     // エラー処理やSupabaseの結果が知りたければログで確認すること
     return new Response("OK", { status: 200 });
-	}
-};
+}
+

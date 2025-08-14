@@ -327,15 +327,15 @@ async function bCreateRichMenuYoichi(channelAccessToken) {
           bounds: { x: 0, y: (hTab+hItem), width: wItem, height: hItem },
           action: { type: "postback", data: "tap_richMenuB4y", "displayText": "アクティビティに関するご案内", "label": "　" }
         },
-	      // B6
+	      // B6y
         {
           bounds: { x: wItem*2, y: (hTab+hItem), width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB6", "displayText": "会場マップ\nショップリスト", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB6y", "displayText": "会場マップ\nショップリスト", "label": "　" }
         },
-	      // B7
+	      // B7y
         {
           bounds: { x:wItem*3, y:(hTab+hItem), width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB7", "displayText": "駐車場及びアクセス方法", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB7y", "displayText": "駐車場及びアクセス方法", "label": "　" }
         }
     	]
 		};

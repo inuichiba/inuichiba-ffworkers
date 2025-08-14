@@ -1,9 +1,10 @@
 ﻿# kvapi-open.ps1
 # 4つまとめて開くランチャー（このスクリプト自体を管理者で実行してください）
+# Windows用
 
 $kvDir   = 'D:\nasubi\inuichiba-ffworkers\src\kv-api'
-$kvBatffprod = Join-Path $kvDir 'kvapi-curl-ffprod.bat'
-$kvBatffdev  = Join-Path $kvDir 'kvapi-curl-ffdev.bat'
+$kvBatffprod = Join-Path $kvDir 'curl-groupdel-ffprod.bat'
+$kvBatffdev  = Join-Path $kvDir 'curl-del-ffdev.bat'
 
 # --- PowerShell（管理者） ---
 Start-Process powershell.exe -Verb RunAs -ArgumentList '-NoExit', "-Command Set-Location -Path '$kvDir'"

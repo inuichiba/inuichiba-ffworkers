@@ -1,5 +1,5 @@
 /**
- * notify.js
+ * handlers/notify.js
  * --------------------------
  * ✅ 目的:
  * GitHub Actions などから通知メッセージを受け取るためのエンドポイント。

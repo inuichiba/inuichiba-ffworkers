@@ -22,11 +22,11 @@ npx wrangler deploy --env ffdev  --config wrangler.kvapi.toml
 // デプロイ先URL（例）: https://inuichiba-ffworkers-kvapi-ffprod.<your-worker-name>.workers.dev
 // POSTリクエストで以下のJSONを送信:
 //     {
-//       "kind": "put" | "del" | "all",     // デフォルト: "del"
-//       "userId": "Uxxxx...",              // デフォルト(私のffprod): "U061b67a5098093dfcbae373c2e7db1ea"
-//       "groupId": "default"               // 任意。省略可
-//       "ttl": 600                         // 任意。省略時は600秒
-//       "env": "ffprod" | "ffdev"          // 任意。省略時は "ffprod"
+//       "kind": "put"|"del"|"all"|"groupdel", // put:書き込み del:削除 all:del→put groupdel:Cで始まるグループラインを500件削除
+//       "userId": "Uxxxx...",       // kind==groupdel以外必須
+//       "groupId": "default"        // 任意。省略すると"default"になる。kind==groupdelは省略不可
+//       "ttl": 600                  // 任意。省略時は600秒
+//       "env": "ffprod" | "ffdev"   // 任意。省略時は "ffprod"
 //     }
 //
 //
@@ -67,7 +67,6 @@ cd ~/nasubi/inuichiba-ffworkers/src/kv-api
 //  brew install curl
 
 
-import { getFormattedJST } from "../lib/saveUserInfo.js";
 import { getEnv } from "../lib/env.js";
 
 /**
@@ -90,15 +89,40 @@ export async function handleKVToolRequest(request, env) {
 
   try {
     const body = await request.json();
-    const { kind, userId, groupId, ttlArg } = body;
+    const kind = body.kind;
+    const userId = body.userId;
+    const ttl = body.ttlArg ?? 600;
+    // groupIdは扱い方が変わるのでここでは触れない
 
-    const gid = groupId || "default";
-    const ttl = ttlArg ?? 600;
-    const kvKey = `${gid}_${userId}`;
+    // ✅ groupdel 専用処理（他の処理より前に--userId不要だから）
+    if (kind === "groupdel") {
+      const groupId = body.groupId;
+      if (!groupId) {
+        return new Response("Missing groupId for groupdel", { status: 400 });
+      }
+      const prefix = groupId;
+      const list = await usersKV.list({ prefix });
+      let count = 0;
+      for (let i = 0; i < list.keys.length; i++) {
+        const key = list.keys[i].name;
+        if (key.startsWith(groupId) && count < 500) {
+          await usersKV.delete(key);
+          count++;
+        }
+      }
+      console.log(`🗑️ groupId="${groupId}" で ${count} 件削除しました`);
+      return new Response(`Deleted ${count} keys`, { status: 200 });
+    }
 
+
+    // ✅ 通常のキー（userId 必須）処理
     if (!userId || !kind) {
       return new Response("Missing userId or kind", { status: 400 });
     }
+    const groupId = body.groupId || "default";
+    const kvKey = groupId + "_" + userId;
+    const KV_SENTINEL = "1";
+
 
     if (kind === "del" || kind === "all") {
       const existing = await usersKV.get(kvKey);
@@ -110,14 +134,9 @@ export async function handleKVToolRequest(request, env) {
       }
     }
 
+
     if (kind === "put" || kind === "all") {
-      const timestamp = getFormattedJST();
-      const kvValue = JSON.stringify({
-        writtenAt: timestamp,
-        TTL: ttl,
-        source: "KV_API",
-        note: "via POST"
-      });
+      const kvValue = KV_SENTINEL;
       await usersKV.put(kvKey, kvValue, { expirationTtl: ttl});
       console.log(`✅ KVキーを追加しました: ${kvKey}, ttl=${ttl}秒`);
     }

@@ -27,10 +27,9 @@ workers_dev = true
 # デプロイ時のWorker名
 name = "inuichiba-ffworkers-kvapi-ffprod"
 
-# ⚠️ この vars セクションは Cloudflare Pages の "ビルド時" 変数用です
-# Cloudflare Workers の env.GCLOUD_PROJECT には渡されません
-# Workers で使うには Cloudflare ダッシュボードの「Variables(プレーンテキスト)」
-# に登録してください
+# ⚠️ この vars セクションは Cloudflare Pages の "ビルド時" 変数です
+# Cloudflare Workers の env.GCLOUD_PROJECT に渡されます
+# Cloudflare ダッシュボードの「Variables(プレーンテキスト)」に登録されます
 # https://dash.cloudflare.com/ → Workers → 環境変数（Variables）
 vars = { GCLOUD_PROJECT = "inuichiba-ffworkers-ffprod" }
 
