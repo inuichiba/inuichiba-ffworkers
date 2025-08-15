@@ -127,7 +127,7 @@ async function handleThresholdCommand(data, event, env, ctx) {
     kv80:  "KV日次件数しきい値80%",
     kv90:  "KV日次件数しきい値90%",
     kv100: "KV日次件数しきい値100%",
-    kvdel: "KV日次件数のクリア",
+    kvdel: "KV日次件数のリセット",
     sb90:  "Supabase月次件数しきい値90%"
   }[cmd] || cmd;
 

@@ -212,7 +212,7 @@ async function bCreateRichMenu(channelAccessToken) {
     const menuConfig = {
     	size: { width: wAll, height: hAll },
     	selected: true,
-    	name: "タブＢ(右側メニュー)2025秋",
+    	name: "タブＢ(右側メニュー)2025秋mini犬市場",
     	chatBarText: "メニュー(表示/非表示)",
     	areas: [
       	// タブA(左側のタブ)がタップされたらタブA画面に遷移する
@@ -245,7 +245,7 @@ async function bCreateRichMenu(channelAccessToken) {
   	    // B4
         {
           bounds: { x: 0, y: (hTab+hItem), width: wItem, height: hItem },
-          action: { type: "postback", data: "tap_richMenuB3",  "displayText": "アクティビティに関するご案内", "label": "　" }
+          action: { type: "postback", data: "tap_richMenuB4",  "displayText": "アクティビティに関するご案内", "label": "　" }
         },
 	      // B4
         {
